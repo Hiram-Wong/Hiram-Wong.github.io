@@ -595,114 +595,6 @@ spec:
       </tags>
   </entry>
   <entry>
-    <title>云计算赛项-私有云笔记三（Ansible运维）</title>
-    <url>/2021/05/11/cloudcomping-private-3/</url>
-    <content><![CDATA[<blockquote>
-<p>在/root目录下创建example目录作为Ansible工作目录，部署的入口文件命名为cscc_install.yaml，对其他两台云主机进行安装高可用数据库集群（MariaDB_Galera_cluster，数据库密码设置为123456）的操作</p>
-</blockquote>
-<pre><code class="sh"># 设置免密认证，多节点执行
-yum -y install /opt/python-keyczar-0.71c-2.el7.noarch.rpm  
-yum -y install /opt/sshpass-1.05-5.el7.x86_64.rpm  
-yum -y install ansible 
-
-vi /etc/ansible/hosts 
-[controller]
-192.168.200.72
-[compute]
-192.168.200.92
-
-ssh-keygen
-ssh-copy-id  -i /root/.ssh/id_rsa.pub  192.168.200.72
-ssh-copy-id  -i /root/.ssh/id_rsa.pub  192.168.200.92
-</code></pre>
-<pre><code class="yaml">mkdir example
-vi example/cscc_install.yaml
----
-  - hosts: all
-    tasks:
-    - name: inatell packages
-      yum:
-        name: &quot;&#123;&#123; packages &#125;&#125;&quot;
-      vars:
-        packages:
-        - mariadb
-        - mariadb-server
-        - galera
-        - net-tools
-    - name: start mariadb
-      service: name=mariadb state=started
-    - name: init mariadb
-      script: mysql_init.sh
-    - name: stop mariadb
-      service: name=mariadb state=stopped
-    - name: use template
-      template:
-        src: mariadb-server.cnf.j2
-        dest: /etc/my.cnf.d/mariadb-server.cnf
-  - hosts: cluster1
-    tasks:
-    - name: start cluster1
-      shell: &quot;nohup /usr/libexec/mysqld --wsrep-new-cluster --user=mysql &amp;&quot;
-      async: 10
-      poll: 0
-    - wait_for: port=4567 state=started
-  - hosts: cluster2
-    tasks:
-    - name: start cluster2
-      service: name=mariadb state=started
-</code></pre>
-<pre><code class="j2">vi mariadb-server.cnf.j2
-[server]
-
-[mysqld]
-datadir=/var/lib/mysql
-socket=/var/lib/mysql/mysql.sock
-log-error=/var/log/mariadb/mariadb.log
-pid-file=/var/run/mariadb/mariadb.pid
-
-[galera]
-wsrep_on=ON                                                     #节点已经开启
-wsrep_provider=/usr/lib64/galera/libgalera_smm.so               #启用galera模块
-wsrep_cluster_address=gcomm://192.168.200.72,192.168.200.92     #指定集群中节点的IP
-binlog_format=row                                               #二进制日志格式必须为行
-default_storage_engine=InnoDB                                   #存储引擎（只支持InnoDB）
-innodb_autoinc_lock_mode=2                                      #总结点数量(视自己情况而定，算上主节点）
-bind-address=0.0.0.0                                            #绑定本机的所有IP
-wsrep_cluster_name=&quot;Mariadb_Galera_Cluster&quot;                     #集群的名字
-wsrep_node_address=&quot;&#123;&#123; ansible_default_ipv4.address &#125;&#125;&quot;         #节点的IP
-wsrep_node_name = &quot;&#123;&#123; ansible_hostname &#125;&#125;&quot;                      #节点的名称
-wsrep_sst_method=rsync                                          #集群使用rsync同步方式
-
-[embedded]
-
-[mariadb]
-
-[mariadb-10.1]
-</code></pre>
-<pre><code class="shell">vi mysql_init.sh
-mysqladmin -uroot password 123456
-mysql -uroot -p123456 -e &#39;grant all privileges on *.* to root@&quot;%&quot; identified by &quot;123456&quot;;&#39;
-mysql -uroot -p123456 -e &#39;flush privileges;&#39;
-</code></pre>
-<pre><code class="shell">验证
-#查看节点数
-show  status like &quot;wsrep_cluster_size&quot;;
-#查看加入的节点ip
-show  global status like &#39;wsrep_incoming_addresses&#39;;
-</code></pre>
-<blockquote>
-<p>创建4台虚拟机，一台ansible母鸡，三台node，解压部署zookeeper和kafka集群高可靠</p>
-</blockquote>
-]]></content>
-      <categories>
-        <category>云计算</category>
-      </categories>
-      <tags>
-        <tag>云计算</tag>
-        <tag>Ansible</tag>
-      </tags>
-  </entry>
-  <entry>
     <title>云计算赛项-私有云笔记二（Python运维）</title>
     <url>/2021/05/11/cloudcomping-private-2/</url>
     <content><![CDATA[<blockquote>
@@ -999,203 +891,6 @@ if __name__ == &quot;__main__&quot;:
       </tags>
   </entry>
   <entry>
-    <title>ECS 7天实践训练营</title>
-    <url>/2020/08/06/development-cloudcloud-ecs7day/</url>
-    <content><![CDATA[<h2 id="Class1-打造云笔记"><a href="#Class1-打造云笔记" class="headerlink" title="Class1:打造云笔记"></a>Class1:打造云笔记</h2><h4 id="安装node-js"><a href="#安装node-js" class="headerlink" title="安装node.js"></a>安装node.js</h4><pre><code class="Linux"># 下载Node.js包  
-wget https://npm.taobao.org/mirrors/node/v13.9.0/node-v13.9.0-linux-x64.tar.xz
-# 创建Node.js安装⽬录 
-mkdir -p /usr/local/lib/nodejs
-# 解压 解压到要安装⽬录
-tar -xJvf node-v13.9.0-linux-x64.tar.xz -C /usr/local/lib/nodejs
-# 查看版本号，验证是否安装成功
-cd /usr/local/lib/nodejs/node-v13.9.0-linux-x64/bin
-./node -v
-</code></pre>
-<h4 id="配置环境变量"><a href="#配置环境变量" class="headerlink" title="配置环境变量"></a>配置环境变量</h4><pre><code class="Linux"># 编辑环境变量
-vi ~/.bash_profile
-PATH=$PATH:$HOME/bin:/usr/local/lib/nodejs/node-v13.9.0-linux-x64/bin
-# 重载环境变量
-source ~/.bash_profile
-</code></pre>
-<h4 id="安装VuePress"><a href="#安装VuePress" class="headerlink" title="安装VuePress"></a>安装VuePress</h4><pre><code class="Linux"># 设置淘宝镜像
-npm config set registry https://registry.npm.taobao.org
-# 安装 VuePress
-npm install -g vuepress
-# 创建a安装⽬录
-mkdir vuepress
-cd vuepress
-# 项⽬初始化
-npm init -y
-</code></pre>
-<h4 id="配置VuePress"><a href="#配置VuePress" class="headerlink" title="配置VuePress"></a>配置VuePress</h4><pre><code class="Linux"># 配置相关命令
-vi package.json
-
-&quot;scripts&quot;: &#123;
- &quot;docs:dev&quot;: &quot;vuepress dev docs&quot;,
- &quot;docs:build&quot;: &quot;vuepress build docs&quot;
-&#125;,
-
-# 在当前⽬录中创建⼀个⽂档⽬录
-mkdir docs
-# 创建.vuepress⽬录
-cd docs
-mkdir .vuepress
-# 新建⼀个md⽂件
-echo &#39;# Hello VuePress - first blog!&#39; &gt;README.md
-# 创建config.js配置⽂件
-cd .vuepress
-echo &gt;config.js
-# 创建public⽬录
-mkdir public
-</code></pre>
-<h4 id="运行VuePress"><a href="#运行VuePress" class="headerlink" title="运行VuePress"></a>运行VuePress</h4><pre><code class="Linux">#  运⾏服务
-vuepress dev docs
-</code></pre>
-<p>VuePress官方[<a href="https://www.vuepress.cn]">https://www.vuepress.cn]</a></p>
-<h2 id="Class2-搭建wiki知识库"><a href="#Class2-搭建wiki知识库" class="headerlink" title="Class2:搭建wiki知识库"></a>Class2:搭建wiki知识库</h2><h4 id="自动化安装lamp环境"><a href="#自动化安装lamp环境" class="headerlink" title="自动化安装lamp环境"></a>自动化安装lamp环境</h4><pre><code class="Linux"># 安装 wget、git
-yum -y install wget git 
-# git clone 并赋予脚本执行权限
-git clone https://github.com/teddysun/lamp.git
-cd lamp
-chmod 755 *.sh
-# 使用自动模式安装
-~/lamp/lamp.sh -h
-# 安装 Apache、Mysql5.6、PHP-7.1、phpMyAdmin
-~/lamp/lamp.sh --apache_option 1 --db_option 1 --php_option 3 --db_manage_modules phpmyadmin
-</code></pre>
-<h4 id="启动服务"><a href="#启动服务" class="headerlink" title="启动服务"></a>启动服务</h4><pre><code class="Linux"># 启动Apache
-/etc/init.d/httpd start
-</code></pre>
-<h4 id="上传源码"><a href="#上传源码" class="headerlink" title="上传源码"></a>上传源码</h4><pre><code class="Linux"># 将 /data/www/default 目录下东西全面移动到新目录
-cd /data/www/default
-mkdir ord
-mv * ord
-# 下载源码包
-wget https://releases.wikimedia.org/mediawiki/1.29/mediawiki-1.29.1.tar.gz
-# 解压安装包
-tar -zxvf mediawiki-1.29.1.tar.gz 
-# 将文件移动到网站根目录
-mv /mediawiki-1.29.1/* .
-</code></pre>
-<h4 id="安装"><a href="#安装" class="headerlink" title="安装"></a>安装</h4><p>访问公网ip<br><img src="https://i.loli.net/2020/08/07/GjISNpVLYBMlqW3.png" alt="image.png"></p>
-<p>一路next<br><img src="https://i.loli.net/2020/08/07/UWIEzaNpGM2TDrd.png" alt="image.png"></p>
-<p>如出现以下错误<br><img src="https://i.loli.net/2020/08/07/oBr3yVPQkxh9Zpn.png" alt="image.png"></p>
-<p>解决方法</p>
-<pre><code># 给予文件权限
-cd /data
-chmod 777 www
-</code></pre>
-<p>配置相关信息<br><img src="https://i.loli.net/2020/08/07/RBWlyXOFh4vtjcr.png" alt="image.png"><br>一路next<br><img src="https://i.loli.net/2020/08/07/PQS2KLi6rXxRkJb.png" alt="image.png"></p>
-<pre><code class="Linux"># 进入相应文件目录
-cd /data/www/default
-# 下载文件[路径为刚才显示的地址]
-wget http://192.168.37.128/mediawiki-1.29.1/mw-config/index.php?localsettings=1
-# 重命名[具体下载的什么文件名，自行查看]
- mv index.php\?localsettings\=1 LocalSettings.php
-</code></pre>
-<p><img src="https://i.loli.net/2020/08/07/oizdEUwBkZ6phKu.png" alt="image.png"></p>
-<h2 id="Class3：基于ECS构建微信公众号管理系统"><a href="#Class3：基于ECS构建微信公众号管理系统" class="headerlink" title="Class3：基于ECS构建微信公众号管理系统"></a>Class3：基于ECS构建微信公众号管理系统</h2><p>LAMP环境就不重新搭建了</p>
-<h4 id="启动服务-1"><a href="#启动服务-1" class="headerlink" title="启动服务"></a>启动服务</h4><pre><code class="Linux"># 在之前开启Apache基础上再一个启动Mysql服务
-/etc/init.d/mysqld start
-</code></pre>
-<h4 id="上传源码-1"><a href="#上传源码-1" class="headerlink" title="上传源码"></a>上传源码</h4><pre><code class="Linux"># 进入相应文件目录
-cd /data/www/default
-# 下载源码包
-wget http://www.we7.cc/download/WeEngine-Laster-Offline.zip?spm=5176.10731542.0.0.7b6a38500TZ7q0&amp;file=WeEngine-Laster-Offline.zip
-# 不过我没下载成功这个包 所以我用的官方微擎
-https://cdn.w7.cc/download/WeEngine-Laster-Online.zip
-# 下载unzip库
-yum install unzip
-# 解压源码包
-unzip WeEngine-Laster-Offline.zip
-</code></pre>
-<h4 id="创建数据库"><a href="#创建数据库" class="headerlink" title="创建数据库"></a>创建数据库</h4><pre><code class="Linux"># 进入mysql
-mysql -uroot -p
-# 输入密码 
-LAMP环境数据库密码默认为lamp.sh
-# 执行命令
-CREATE DATABASE 数据库名;
-GRANT SELECT,INSERT,UPDATE,DELETE,CREATE,DROP,ALTER ON 数据库名.* TO 数据库名@localhost IDENTIFIED BY &#39;密码&#39;;
-SET PASSWORD FOR
-</code></pre>
-<h4 id="安装源码"><a href="#安装源码" class="headerlink" title="安装源码"></a>安装源码</h4><p>访问公网ip/install.php[一定要公网ip，不然后面检测通过不了]<br><img src="https://i.loli.net/2020/08/07/pxm5X3fqDFhjTYB.png" alt="image.png"></p>
-<p>一路next</p>
-<h4 id="配置公众号"><a href="#配置公众号" class="headerlink" title="配置公众号"></a>配置公众号</h4><p><img src="https://i.loli.net/2020/08/07/BrQxijJaGyXNITR.png" alt="image.png"><br><img src="https://i.loli.net/2020/08/07/2hEwl7dmWHR8rp6.png" alt="image.png"><br><img src="https://i.loli.net/2020/08/07/uA4TiIJrYsO1pvS.png" alt="image.png"><br><img src="https://i.loli.net/2020/08/07/Ox6XLHtNn8lMufy.png" alt="image.png"><br><img src="https://i.loli.net/2020/08/07/ACWSsvf4R6trdND.png" alt="image.png"></p>
-<h4 id="配置插件"><a href="#配置插件" class="headerlink" title="配置插件"></a>配置插件</h4><p>随便安装了一个插件<br><img src="https://i.loli.net/2020/08/07/cUEwlSj7OIT2hxA.png" alt="image.png"><br>简单配置下<br><img src="https://i.loli.net/2020/08/07/t6YpEXBwr7On1fL.png" alt="image.png"></p>
-<h2 id="Class4-打造离线下载服务器"><a href="#Class4-打造离线下载服务器" class="headerlink" title="Class4:打造离线下载服务器"></a>Class4:打造离线下载服务器</h2><p>一键安装脚本（使用root用户）</p>
-<pre><code class="Linux">#海外
-bash &lt;(curl -Lsk https://raw.githubusercontent.com/helloxz/ccaa/master/ccaa.sh)
-#国内
-bash &lt;(curl -Lsk https://raw.githubusercontent.com/helloxz/ccaa/master/ccaa.sh) cdn
-</code></pre>
-<p>如遇以上如执行无反应，使用以下解决办法</p>
-<pre><code class="Linux"># 安装wget unzip curl
-yum -y install wget unzip curl
-# 下载脚本包
-wget https://github.com/helloxz/ccaa/archive/master.zip
-# 执行脚本
-unzip master.zip &amp;&amp; cd ccaa-master &amp;&amp; sh ccaa.sh
-</code></pre>
-<h4 id="安装CCAA"><a href="#安装CCAA" class="headerlink" title="安装CCAA"></a>安装CCAA</h4><p><code># 输入1安装CCAA</code><br><img src="https://i.loli.net/2020/08/07/S4mpIvTAnNJahGr.png" alt="image.png"><br><code># 根据提示设置下载路径、RPC密钥</code><br><img src="https://i.loli.net/2020/08/07/SwhmpiYgsRBQ8O6.png" alt="image.png"><br><code># 安装完成后会看到如下提示，请务必牢记RPC密钥、用户名、密码等信息</code><br><img src="https://i.loli.net/2020/08/07/l36jPkgdtWJo52O.png" alt="image.png"></p>
-<h4 id="登录后台配置RPC"><a href="#登录后台配置RPC" class="headerlink" title="登录后台配置RPC"></a>登录后台配置RPC</h4><p><img src="https://i.loli.net/2020/08/07/BWbOAV5pmn2vM97.png" alt="image.png"></p>
-<h4 id="使用"><a href="#使用" class="headerlink" title="使用"></a>使用</h4><p><img src="https://i.loli.net/2020/08/07/Ia1LfEW5vRbdXty.png" alt="image.png"></p>
-<h4 id="常用命令"><a href="#常用命令" class="headerlink" title="常用命令"></a>常用命令</h4><pre><code class="Linux">#查看ccaa状态
-ccaa status
-#启动ccaa
-ccaa start
-#停止ccaa
-ccaa stop
-#重启ccaa
-ccaa restart
-</code></pre>
-<h2 id="Class5-基于ECS搭建Java-Web开发环境"><a href="#Class5-基于ECS搭建Java-Web开发环境" class="headerlink" title="Class5:基于ECS搭建Java Web开发环境"></a>Class5:基于ECS搭建Java Web开发环境</h2><h4 id="安装JDK"><a href="#安装JDK" class="headerlink" title="安装JDK"></a>安装JDK</h4><pre><code class="Linux"># 查看yum源中JDK版本
-yum list java*
-# 安装JDK1.8
-yum -y install java-1.8.0-openjdk*
-# 查看是否安装成功
-java -version
-</code></pre>
-<h4 id="安装MySQL数据库"><a href="#安装MySQL数据库" class="headerlink" title="安装MySQL数据库"></a>安装MySQL数据库</h4><pre><code class="LIinux"># 下载并安装MySQL官方的Yum Repository
-wget http://dev.mysql.com/get/mysql57-community-release-el7-10.noarch.rpm
-yum -y install mysql57-community-release-el7-10.noarch.rpm
-yum -y install mysql-community-server
-# 启动 MySQL 数据库
-systemctl start mysqld
-# 查看MySQL初始密码。
-grep &quot;password&quot; /var/log/mysqld.log
-# 登录数据库。
-mysql -uroot -p
-# 修改MySQL默认密码。
-set global validate_password_policy=0;  #修改密码安全策略为低（只校验密码长度，至少8位）。
-ALTER USER &#39;root&#39;@&#39;localhost&#39; IDENTIFIED BY &#39;12345678&#39;;
-# 授予数据库root用户远程管理权限
-GRANT ALL PRIVILEGES ON *.* TO &#39;root&#39;@&#39;%&#39; IDENTIFIED BY &#39;12345678&#39;;
-# 退出数据库
-exit
-</code></pre>
-<h4 id="安装Tomcat"><a href="#安装Tomcat" class="headerlink" title="安装Tomcat"></a>安装Tomcat</h4><pre><code class="Linux"># 下载Tomcat压缩包
-wget https://mirror.bit.edu.cn/apache/tomcat/tomcat-8/v8.5.57/bin/apache-tomcat-8.5.57.tar.gz
-# 解压Tomcat压缩包。
-tar -zxvf apache-tomcat-8.5.57.tar.gz 
-# 修改Tomcat名字
-mv apache-tomcat-8.5.57 /usr/local/Tomcat8.5
-# 为Tomcat授权权限
-chmod +x /usr/local/Tomcat8.5/bin/*.sh
-# 修改Tomcat默认端口号为80（默认端口号为8080）
-sed -i &#39;s/Connector port=&quot;8080&quot;/Connector port=&quot;80&quot;/&#39; /usr/local/Tomcat8.5/conf/server.xml
-# 启动Tomcat
-/usr/local/Tomcat8.5/bin/./startup.sh
-</code></pre>
-<h4 id="访问公网ip"><a href="#访问公网ip" class="headerlink" title="访问公网ip"></a>访问公网ip</h4><p><img src="https://i.loli.net/2020/08/07/oIOFbcjCay8kvJN.png" alt="image.png"></p>
-<h2 id="Class7：在线编程挑战"><a href="#Class7：在线编程挑战" class="headerlink" title="Class7：在线编程挑战"></a>Class7：在线编程挑战</h2>]]></content>
-      <categories>
-        <category>云开发</category>
-      </categories>
-      <tags>
-        <tag>云开发</tag>
-      </tags>
-  </entry>
-  <entry>
     <title>云开发7天训练营学习</title>
     <url>/2020/08/05/development-cloudcloud-dev/</url>
     <content><![CDATA[<h3 id="云开发7天训练营学习计划"><a href="#云开发7天训练营学习计划" class="headerlink" title="云开发7天训练营学习计划"></a>云开发7天训练营学习计划</h3><ol>
@@ -1481,6 +1176,114 @@ export class TodoService &#123;
       </tags>
   </entry>
   <entry>
+    <title>云计算赛项-私有云笔记三（Ansible运维）</title>
+    <url>/2021/05/11/cloudcomping-private-3/</url>
+    <content><![CDATA[<blockquote>
+<p>在/root目录下创建example目录作为Ansible工作目录，部署的入口文件命名为cscc_install.yaml，对其他两台云主机进行安装高可用数据库集群（MariaDB_Galera_cluster，数据库密码设置为123456）的操作</p>
+</blockquote>
+<pre><code class="sh"># 设置免密认证，多节点执行
+yum -y install /opt/python-keyczar-0.71c-2.el7.noarch.rpm  
+yum -y install /opt/sshpass-1.05-5.el7.x86_64.rpm  
+yum -y install ansible 
+
+vi /etc/ansible/hosts 
+[controller]
+192.168.200.72
+[compute]
+192.168.200.92
+
+ssh-keygen
+ssh-copy-id  -i /root/.ssh/id_rsa.pub  192.168.200.72
+ssh-copy-id  -i /root/.ssh/id_rsa.pub  192.168.200.92
+</code></pre>
+<pre><code class="yaml">mkdir example
+vi example/cscc_install.yaml
+---
+  - hosts: all
+    tasks:
+    - name: inatell packages
+      yum:
+        name: &quot;&#123;&#123; packages &#125;&#125;&quot;
+      vars:
+        packages:
+        - mariadb
+        - mariadb-server
+        - galera
+        - net-tools
+    - name: start mariadb
+      service: name=mariadb state=started
+    - name: init mariadb
+      script: mysql_init.sh
+    - name: stop mariadb
+      service: name=mariadb state=stopped
+    - name: use template
+      template:
+        src: mariadb-server.cnf.j2
+        dest: /etc/my.cnf.d/mariadb-server.cnf
+  - hosts: cluster1
+    tasks:
+    - name: start cluster1
+      shell: &quot;nohup /usr/libexec/mysqld --wsrep-new-cluster --user=mysql &amp;&quot;
+      async: 10
+      poll: 0
+    - wait_for: port=4567 state=started
+  - hosts: cluster2
+    tasks:
+    - name: start cluster2
+      service: name=mariadb state=started
+</code></pre>
+<pre><code class="j2">vi mariadb-server.cnf.j2
+[server]
+
+[mysqld]
+datadir=/var/lib/mysql
+socket=/var/lib/mysql/mysql.sock
+log-error=/var/log/mariadb/mariadb.log
+pid-file=/var/run/mariadb/mariadb.pid
+
+[galera]
+wsrep_on=ON                                                     #节点已经开启
+wsrep_provider=/usr/lib64/galera/libgalera_smm.so               #启用galera模块
+wsrep_cluster_address=gcomm://192.168.200.72,192.168.200.92     #指定集群中节点的IP
+binlog_format=row                                               #二进制日志格式必须为行
+default_storage_engine=InnoDB                                   #存储引擎（只支持InnoDB）
+innodb_autoinc_lock_mode=2                                      #总结点数量(视自己情况而定，算上主节点）
+bind-address=0.0.0.0                                            #绑定本机的所有IP
+wsrep_cluster_name=&quot;Mariadb_Galera_Cluster&quot;                     #集群的名字
+wsrep_node_address=&quot;&#123;&#123; ansible_default_ipv4.address &#125;&#125;&quot;         #节点的IP
+wsrep_node_name = &quot;&#123;&#123; ansible_hostname &#125;&#125;&quot;                      #节点的名称
+wsrep_sst_method=rsync                                          #集群使用rsync同步方式
+
+[embedded]
+
+[mariadb]
+
+[mariadb-10.1]
+</code></pre>
+<pre><code class="shell">vi mysql_init.sh
+mysqladmin -uroot password 123456
+mysql -uroot -p123456 -e &#39;grant all privileges on *.* to root@&quot;%&quot; identified by &quot;123456&quot;;&#39;
+mysql -uroot -p123456 -e &#39;flush privileges;&#39;
+</code></pre>
+<pre><code class="shell">验证
+#查看节点数
+show  status like &quot;wsrep_cluster_size&quot;;
+#查看加入的节点ip
+show  global status like &#39;wsrep_incoming_addresses&#39;;
+</code></pre>
+<blockquote>
+<p>创建4台虚拟机，一台ansible母鸡，三台node，解压部署zookeeper和kafka集群高可靠</p>
+</blockquote>
+]]></content>
+      <categories>
+        <category>云计算</category>
+      </categories>
+      <tags>
+        <tag>云计算</tag>
+        <tag>Ansible</tag>
+      </tags>
+  </entry>
+  <entry>
     <title>Serverless Web云开发</title>
     <url>/2020/08/30/development-cloudcloud-serverless-development-stall/</url>
     <content><![CDATA[<h2 id="地摊宝开发历程"><a href="#地摊宝开发历程" class="headerlink" title="地摊宝开发历程"></a>地摊宝开发历程</h2><p><img src="https://img.alicdn.com/tfs/TB1qnvCOAY2gK0jSZFgXXc5OFXa-2880-700.jpg" alt="image.png"></p>
@@ -1538,6 +1341,221 @@ export class TodoService &#123;
       <tags>
         <tag>云开发</tag>
       </tags>
+  </entry>
+  <entry>
+    <title>ECS 7天实践训练营</title>
+    <url>/2020/08/06/development-cloudcloud-ecs7day/</url>
+    <content><![CDATA[<h2 id="Class1-打造云笔记"><a href="#Class1-打造云笔记" class="headerlink" title="Class1:打造云笔记"></a>Class1:打造云笔记</h2><h4 id="安装node-js"><a href="#安装node-js" class="headerlink" title="安装node.js"></a>安装node.js</h4><pre><code class="Linux"># 下载Node.js包  
+wget https://npm.taobao.org/mirrors/node/v13.9.0/node-v13.9.0-linux-x64.tar.xz
+# 创建Node.js安装⽬录 
+mkdir -p /usr/local/lib/nodejs
+# 解压 解压到要安装⽬录
+tar -xJvf node-v13.9.0-linux-x64.tar.xz -C /usr/local/lib/nodejs
+# 查看版本号，验证是否安装成功
+cd /usr/local/lib/nodejs/node-v13.9.0-linux-x64/bin
+./node -v
+</code></pre>
+<h4 id="配置环境变量"><a href="#配置环境变量" class="headerlink" title="配置环境变量"></a>配置环境变量</h4><pre><code class="Linux"># 编辑环境变量
+vi ~/.bash_profile
+PATH=$PATH:$HOME/bin:/usr/local/lib/nodejs/node-v13.9.0-linux-x64/bin
+# 重载环境变量
+source ~/.bash_profile
+</code></pre>
+<h4 id="安装VuePress"><a href="#安装VuePress" class="headerlink" title="安装VuePress"></a>安装VuePress</h4><pre><code class="Linux"># 设置淘宝镜像
+npm config set registry https://registry.npm.taobao.org
+# 安装 VuePress
+npm install -g vuepress
+# 创建a安装⽬录
+mkdir vuepress
+cd vuepress
+# 项⽬初始化
+npm init -y
+</code></pre>
+<h4 id="配置VuePress"><a href="#配置VuePress" class="headerlink" title="配置VuePress"></a>配置VuePress</h4><pre><code class="Linux"># 配置相关命令
+vi package.json
+
+&quot;scripts&quot;: &#123;
+ &quot;docs:dev&quot;: &quot;vuepress dev docs&quot;,
+ &quot;docs:build&quot;: &quot;vuepress build docs&quot;
+&#125;,
+
+# 在当前⽬录中创建⼀个⽂档⽬录
+mkdir docs
+# 创建.vuepress⽬录
+cd docs
+mkdir .vuepress
+# 新建⼀个md⽂件
+echo &#39;# Hello VuePress - first blog!&#39; &gt;README.md
+# 创建config.js配置⽂件
+cd .vuepress
+echo &gt;config.js
+# 创建public⽬录
+mkdir public
+</code></pre>
+<h4 id="运行VuePress"><a href="#运行VuePress" class="headerlink" title="运行VuePress"></a>运行VuePress</h4><pre><code class="Linux">#  运⾏服务
+vuepress dev docs
+</code></pre>
+<p>VuePress官方[<a href="https://www.vuepress.cn]">https://www.vuepress.cn]</a></p>
+<h2 id="Class2-搭建wiki知识库"><a href="#Class2-搭建wiki知识库" class="headerlink" title="Class2:搭建wiki知识库"></a>Class2:搭建wiki知识库</h2><h4 id="自动化安装lamp环境"><a href="#自动化安装lamp环境" class="headerlink" title="自动化安装lamp环境"></a>自动化安装lamp环境</h4><pre><code class="Linux"># 安装 wget、git
+yum -y install wget git 
+# git clone 并赋予脚本执行权限
+git clone https://github.com/teddysun/lamp.git
+cd lamp
+chmod 755 *.sh
+# 使用自动模式安装
+~/lamp/lamp.sh -h
+# 安装 Apache、Mysql5.6、PHP-7.1、phpMyAdmin
+~/lamp/lamp.sh --apache_option 1 --db_option 1 --php_option 3 --db_manage_modules phpmyadmin
+</code></pre>
+<h4 id="启动服务"><a href="#启动服务" class="headerlink" title="启动服务"></a>启动服务</h4><pre><code class="Linux"># 启动Apache
+/etc/init.d/httpd start
+</code></pre>
+<h4 id="上传源码"><a href="#上传源码" class="headerlink" title="上传源码"></a>上传源码</h4><pre><code class="Linux"># 将 /data/www/default 目录下东西全面移动到新目录
+cd /data/www/default
+mkdir ord
+mv * ord
+# 下载源码包
+wget https://releases.wikimedia.org/mediawiki/1.29/mediawiki-1.29.1.tar.gz
+# 解压安装包
+tar -zxvf mediawiki-1.29.1.tar.gz 
+# 将文件移动到网站根目录
+mv /mediawiki-1.29.1/* .
+</code></pre>
+<h4 id="安装"><a href="#安装" class="headerlink" title="安装"></a>安装</h4><p>访问公网ip<br><img src="https://i.loli.net/2020/08/07/GjISNpVLYBMlqW3.png" alt="image.png"></p>
+<p>一路next<br><img src="https://i.loli.net/2020/08/07/UWIEzaNpGM2TDrd.png" alt="image.png"></p>
+<p>如出现以下错误<br><img src="https://i.loli.net/2020/08/07/oBr3yVPQkxh9Zpn.png" alt="image.png"></p>
+<p>解决方法</p>
+<pre><code># 给予文件权限
+cd /data
+chmod 777 www
+</code></pre>
+<p>配置相关信息<br><img src="https://i.loli.net/2020/08/07/RBWlyXOFh4vtjcr.png" alt="image.png"><br>一路next<br><img src="https://i.loli.net/2020/08/07/PQS2KLi6rXxRkJb.png" alt="image.png"></p>
+<pre><code class="Linux"># 进入相应文件目录
+cd /data/www/default
+# 下载文件[路径为刚才显示的地址]
+wget http://192.168.37.128/mediawiki-1.29.1/mw-config/index.php?localsettings=1
+# 重命名[具体下载的什么文件名，自行查看]
+ mv index.php\?localsettings\=1 LocalSettings.php
+</code></pre>
+<p><img src="https://i.loli.net/2020/08/07/oizdEUwBkZ6phKu.png" alt="image.png"></p>
+<h2 id="Class3：基于ECS构建微信公众号管理系统"><a href="#Class3：基于ECS构建微信公众号管理系统" class="headerlink" title="Class3：基于ECS构建微信公众号管理系统"></a>Class3：基于ECS构建微信公众号管理系统</h2><p>LAMP环境就不重新搭建了</p>
+<h4 id="启动服务-1"><a href="#启动服务-1" class="headerlink" title="启动服务"></a>启动服务</h4><pre><code class="Linux"># 在之前开启Apache基础上再一个启动Mysql服务
+/etc/init.d/mysqld start
+</code></pre>
+<h4 id="上传源码-1"><a href="#上传源码-1" class="headerlink" title="上传源码"></a>上传源码</h4><pre><code class="Linux"># 进入相应文件目录
+cd /data/www/default
+# 下载源码包
+wget http://www.we7.cc/download/WeEngine-Laster-Offline.zip?spm=5176.10731542.0.0.7b6a38500TZ7q0&amp;file=WeEngine-Laster-Offline.zip
+# 不过我没下载成功这个包 所以我用的官方微擎
+https://cdn.w7.cc/download/WeEngine-Laster-Online.zip
+# 下载unzip库
+yum install unzip
+# 解压源码包
+unzip WeEngine-Laster-Offline.zip
+</code></pre>
+<h4 id="创建数据库"><a href="#创建数据库" class="headerlink" title="创建数据库"></a>创建数据库</h4><pre><code class="Linux"># 进入mysql
+mysql -uroot -p
+# 输入密码 
+LAMP环境数据库密码默认为lamp.sh
+# 执行命令
+CREATE DATABASE 数据库名;
+GRANT SELECT,INSERT,UPDATE,DELETE,CREATE,DROP,ALTER ON 数据库名.* TO 数据库名@localhost IDENTIFIED BY &#39;密码&#39;;
+SET PASSWORD FOR
+</code></pre>
+<h4 id="安装源码"><a href="#安装源码" class="headerlink" title="安装源码"></a>安装源码</h4><p>访问公网ip/install.php[一定要公网ip，不然后面检测通过不了]<br><img src="https://i.loli.net/2020/08/07/pxm5X3fqDFhjTYB.png" alt="image.png"></p>
+<p>一路next</p>
+<h4 id="配置公众号"><a href="#配置公众号" class="headerlink" title="配置公众号"></a>配置公众号</h4><p><img src="https://i.loli.net/2020/08/07/BrQxijJaGyXNITR.png" alt="image.png"><br><img src="https://i.loli.net/2020/08/07/2hEwl7dmWHR8rp6.png" alt="image.png"><br><img src="https://i.loli.net/2020/08/07/uA4TiIJrYsO1pvS.png" alt="image.png"><br><img src="https://i.loli.net/2020/08/07/Ox6XLHtNn8lMufy.png" alt="image.png"><br><img src="https://i.loli.net/2020/08/07/ACWSsvf4R6trdND.png" alt="image.png"></p>
+<h4 id="配置插件"><a href="#配置插件" class="headerlink" title="配置插件"></a>配置插件</h4><p>随便安装了一个插件<br><img src="https://i.loli.net/2020/08/07/cUEwlSj7OIT2hxA.png" alt="image.png"><br>简单配置下<br><img src="https://i.loli.net/2020/08/07/t6YpEXBwr7On1fL.png" alt="image.png"></p>
+<h2 id="Class4-打造离线下载服务器"><a href="#Class4-打造离线下载服务器" class="headerlink" title="Class4:打造离线下载服务器"></a>Class4:打造离线下载服务器</h2><p>一键安装脚本（使用root用户）</p>
+<pre><code class="Linux">#海外
+bash &lt;(curl -Lsk https://raw.githubusercontent.com/helloxz/ccaa/master/ccaa.sh)
+#国内
+bash &lt;(curl -Lsk https://raw.githubusercontent.com/helloxz/ccaa/master/ccaa.sh) cdn
+</code></pre>
+<p>如遇以上如执行无反应，使用以下解决办法</p>
+<pre><code class="Linux"># 安装wget unzip curl
+yum -y install wget unzip curl
+# 下载脚本包
+wget https://github.com/helloxz/ccaa/archive/master.zip
+# 执行脚本
+unzip master.zip &amp;&amp; cd ccaa-master &amp;&amp; sh ccaa.sh
+</code></pre>
+<h4 id="安装CCAA"><a href="#安装CCAA" class="headerlink" title="安装CCAA"></a>安装CCAA</h4><p><code># 输入1安装CCAA</code><br><img src="https://i.loli.net/2020/08/07/S4mpIvTAnNJahGr.png" alt="image.png"><br><code># 根据提示设置下载路径、RPC密钥</code><br><img src="https://i.loli.net/2020/08/07/SwhmpiYgsRBQ8O6.png" alt="image.png"><br><code># 安装完成后会看到如下提示，请务必牢记RPC密钥、用户名、密码等信息</code><br><img src="https://i.loli.net/2020/08/07/l36jPkgdtWJo52O.png" alt="image.png"></p>
+<h4 id="登录后台配置RPC"><a href="#登录后台配置RPC" class="headerlink" title="登录后台配置RPC"></a>登录后台配置RPC</h4><p><img src="https://i.loli.net/2020/08/07/BWbOAV5pmn2vM97.png" alt="image.png"></p>
+<h4 id="使用"><a href="#使用" class="headerlink" title="使用"></a>使用</h4><p><img src="https://i.loli.net/2020/08/07/Ia1LfEW5vRbdXty.png" alt="image.png"></p>
+<h4 id="常用命令"><a href="#常用命令" class="headerlink" title="常用命令"></a>常用命令</h4><pre><code class="Linux">#查看ccaa状态
+ccaa status
+#启动ccaa
+ccaa start
+#停止ccaa
+ccaa stop
+#重启ccaa
+ccaa restart
+</code></pre>
+<h2 id="Class5-基于ECS搭建Java-Web开发环境"><a href="#Class5-基于ECS搭建Java-Web开发环境" class="headerlink" title="Class5:基于ECS搭建Java Web开发环境"></a>Class5:基于ECS搭建Java Web开发环境</h2><h4 id="安装JDK"><a href="#安装JDK" class="headerlink" title="安装JDK"></a>安装JDK</h4><pre><code class="Linux"># 查看yum源中JDK版本
+yum list java*
+# 安装JDK1.8
+yum -y install java-1.8.0-openjdk*
+# 查看是否安装成功
+java -version
+</code></pre>
+<h4 id="安装MySQL数据库"><a href="#安装MySQL数据库" class="headerlink" title="安装MySQL数据库"></a>安装MySQL数据库</h4><pre><code class="LIinux"># 下载并安装MySQL官方的Yum Repository
+wget http://dev.mysql.com/get/mysql57-community-release-el7-10.noarch.rpm
+yum -y install mysql57-community-release-el7-10.noarch.rpm
+yum -y install mysql-community-server
+# 启动 MySQL 数据库
+systemctl start mysqld
+# 查看MySQL初始密码。
+grep &quot;password&quot; /var/log/mysqld.log
+# 登录数据库。
+mysql -uroot -p
+# 修改MySQL默认密码。
+set global validate_password_policy=0;  #修改密码安全策略为低（只校验密码长度，至少8位）。
+ALTER USER &#39;root&#39;@&#39;localhost&#39; IDENTIFIED BY &#39;12345678&#39;;
+# 授予数据库root用户远程管理权限
+GRANT ALL PRIVILEGES ON *.* TO &#39;root&#39;@&#39;%&#39; IDENTIFIED BY &#39;12345678&#39;;
+# 退出数据库
+exit
+</code></pre>
+<h4 id="安装Tomcat"><a href="#安装Tomcat" class="headerlink" title="安装Tomcat"></a>安装Tomcat</h4><pre><code class="Linux"># 下载Tomcat压缩包
+wget https://mirror.bit.edu.cn/apache/tomcat/tomcat-8/v8.5.57/bin/apache-tomcat-8.5.57.tar.gz
+# 解压Tomcat压缩包。
+tar -zxvf apache-tomcat-8.5.57.tar.gz 
+# 修改Tomcat名字
+mv apache-tomcat-8.5.57 /usr/local/Tomcat8.5
+# 为Tomcat授权权限
+chmod +x /usr/local/Tomcat8.5/bin/*.sh
+# 修改Tomcat默认端口号为80（默认端口号为8080）
+sed -i &#39;s/Connector port=&quot;8080&quot;/Connector port=&quot;80&quot;/&#39; /usr/local/Tomcat8.5/conf/server.xml
+# 启动Tomcat
+/usr/local/Tomcat8.5/bin/./startup.sh
+</code></pre>
+<h4 id="访问公网ip"><a href="#访问公网ip" class="headerlink" title="访问公网ip"></a>访问公网ip</h4><p><img src="https://i.loli.net/2020/08/07/oIOFbcjCay8kvJN.png" alt="image.png"></p>
+<h2 id="Class7：在线编程挑战"><a href="#Class7：在线编程挑战" class="headerlink" title="Class7：在线编程挑战"></a>Class7：在线编程挑战</h2>]]></content>
+      <categories>
+        <category>云开发</category>
+      </categories>
+      <tags>
+        <tag>云开发</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>Hello World</title>
+    <url>/2020/02/22/hello-world/</url>
+    <content><![CDATA[<p>Welcome to <a href="https://hexo.io/">Hexo</a>! This is your very first post. Check <a href="https://hexo.io/docs/">documentation</a> for more info. If you get any problems when using Hexo, you can find the answer in <a href="https://hexo.io/docs/troubleshooting.html">troubleshooting</a> or you can ask me on <a href="https://github.com/hexojs/hexo/issues">GitHub</a>.</p>
+<h2 id="Quick-Start"><a href="#Quick-Start" class="headerlink" title="Quick Start"></a>Quick Start</h2><h3 id="Create-a-new-post"><a href="#Create-a-new-post" class="headerlink" title="Create a new post"></a>Create a new post</h3><pre><code class="bash">$ hexo new &quot;My New Post&quot;
+</code></pre>
+<p>More info: <a href="https://hexo.io/docs/writing.html">Writing</a></p>
+<h3 id="Run-server"><a href="#Run-server" class="headerlink" title="Run server"></a>Run server</h3><pre><code class="bash">$ hexo server
+</code></pre>
+<p>More info: <a href="https://hexo.io/docs/server.html">Server</a></p>
+<h3 id="Generate-static-files"><a href="#Generate-static-files" class="headerlink" title="Generate static files"></a>Generate static files</h3><pre><code class="bash">$ hexo generate
+</code></pre>
+<p>More info: <a href="https://hexo.io/docs/generating.html">Generating</a></p>
+<h3 id="Deploy-to-remote-sites"><a href="#Deploy-to-remote-sites" class="headerlink" title="Deploy to remote sites"></a>Deploy to remote sites</h3><pre><code class="bash">$ hexo deploy
+</code></pre>
+<p>More info: <a href="https://hexo.io/docs/one-command-deployment.html">Deployment</a></p>
+]]></content>
   </entry>
   <entry>
     <title>Python爬虫-网易云热评Demo</title>
@@ -1627,105 +1645,6 @@ song_basic(rand)
 song_url(song_id)
 
 song_hotcomments(song_id)
-</code></pre>
-]]></content>
-      <categories>
-        <category>Python</category>
-      </categories>
-      <tags>
-        <tag>Python爬虫</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>Hello World</title>
-    <url>/2020/02/22/hello-world/</url>
-    <content><![CDATA[<p>Welcome to <a href="https://hexo.io/">Hexo</a>! This is your very first post. Check <a href="https://hexo.io/docs/">documentation</a> for more info. If you get any problems when using Hexo, you can find the answer in <a href="https://hexo.io/docs/troubleshooting.html">troubleshooting</a> or you can ask me on <a href="https://github.com/hexojs/hexo/issues">GitHub</a>.</p>
-<h2 id="Quick-Start"><a href="#Quick-Start" class="headerlink" title="Quick Start"></a>Quick Start</h2><h3 id="Create-a-new-post"><a href="#Create-a-new-post" class="headerlink" title="Create a new post"></a>Create a new post</h3><pre><code class="bash">$ hexo new &quot;My New Post&quot;
-</code></pre>
-<p>More info: <a href="https://hexo.io/docs/writing.html">Writing</a></p>
-<h3 id="Run-server"><a href="#Run-server" class="headerlink" title="Run server"></a>Run server</h3><pre><code class="bash">$ hexo server
-</code></pre>
-<p>More info: <a href="https://hexo.io/docs/server.html">Server</a></p>
-<h3 id="Generate-static-files"><a href="#Generate-static-files" class="headerlink" title="Generate static files"></a>Generate static files</h3><pre><code class="bash">$ hexo generate
-</code></pre>
-<p>More info: <a href="https://hexo.io/docs/generating.html">Generating</a></p>
-<h3 id="Deploy-to-remote-sites"><a href="#Deploy-to-remote-sites" class="headerlink" title="Deploy to remote sites"></a>Deploy to remote sites</h3><pre><code class="bash">$ hexo deploy
-</code></pre>
-<p>More info: <a href="https://hexo.io/docs/one-command-deployment.html">Deployment</a></p>
-]]></content>
-  </entry>
-  <entry>
-    <title>Python爬虫-BeautifulSoup模块</title>
-    <url>/2020/03/29/python-reptile-BeautifulSoup4/</url>
-    <content><![CDATA[<h3 id="安装Requests模块"><a href="#安装Requests模块" class="headerlink" title="安装Requests模块"></a>安装Requests模块</h3><pre><code class="Cmd">pip3 install BeautifulSoup
-</code></pre>
-<h3 id="BeautifulSoup表达式规则"><a href="#BeautifulSoup表达式规则" class="headerlink" title="BeautifulSoup表达式规则"></a>BeautifulSoup表达式规则</h3><table>
-<thead>
-<tr>
-<th>普通字符</th>
-<th>正则匹配</th>
-</tr>
-</thead>
-<tbody><tr>
-<td>&gt;</td>
-<td>逐层提取</td>
-</tr>
-<tr>
-<td>.class</td>
-<td>提取class属性名为class的标签[多个class值可以用.连接]</td>
-</tr>
-<tr>
-<td>#id</td>
-<td>提取id属性名为id的标签</td>
-</tr>
-<tr>
-<td>div</td>
-<td>提取p标签[div]</td>
-</tr>
-<tr>
-<td>[属性名]</td>
-<td>提取含有属性名的标签</td>
-</tr>
-<tr>
-<td>[属性名=属性值]</td>
-<td>提取xxx属性名=xxx属性值的标签</td>
-</tr>
-<tr>
-<td>标签名.属性值</td>
-<td>提取属性为xx的标签</td>
-</tr>
-<tr>
-<td>,</td>
-<td>提取多个不同标签</td>
-</tr>
-<tr>
-<td>text</td>
-<td>提取标签下面的文本</td>
-</tr>
-</tbody></table>
-<h3 id="小案例-匹配新华网主题名称"><a href="#小案例-匹配新华网主题名称" class="headerlink" title="小案例-匹配新华网主题名称"></a>小案例-匹配新华网主题名称</h3><pre><code class="Python"># 导入包
-import requests
-from bs4 import BeautifulSoup
-
-# 构造url,user-agent请求头参数部分
-ua = &#123;
-    &#39;User-Agent&#39; : &#39;Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/80.0.3987.132 Safari/537.36&#39;
-&#125;
-url = &#39;http://www.xinhuanet.com/2020-03/28/c_1125782104.htm&#39;
-
-# 向指定的url发送get含有参数的请求
-response = requests.get(url,headers=ua)
-# 设置字符集
-response.encoding = &#39;utf-8&#39;
-# 返回网站对象
-res = response.text
-
-# 生成选择器对象
-html = BeautifulSoup(res,&quot;html.parser&quot;)
-# 匹配出数组
-title = html.select(&#39;div.h-title&#39;)[0].text
-
-print(title)
 </code></pre>
 ]]></content>
       <categories>
@@ -1857,6 +1776,87 @@ print(proxy_pools.proxy())
       </tags>
   </entry>
   <entry>
+    <title>Python爬虫-BeautifulSoup模块</title>
+    <url>/2020/03/29/python-reptile-BeautifulSoup4/</url>
+    <content><![CDATA[<h3 id="安装Requests模块"><a href="#安装Requests模块" class="headerlink" title="安装Requests模块"></a>安装Requests模块</h3><pre><code class="Cmd">pip3 install BeautifulSoup
+</code></pre>
+<h3 id="BeautifulSoup表达式规则"><a href="#BeautifulSoup表达式规则" class="headerlink" title="BeautifulSoup表达式规则"></a>BeautifulSoup表达式规则</h3><table>
+<thead>
+<tr>
+<th>普通字符</th>
+<th>正则匹配</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>&gt;</td>
+<td>逐层提取</td>
+</tr>
+<tr>
+<td>.class</td>
+<td>提取class属性名为class的标签[多个class值可以用.连接]</td>
+</tr>
+<tr>
+<td>#id</td>
+<td>提取id属性名为id的标签</td>
+</tr>
+<tr>
+<td>div</td>
+<td>提取p标签[div]</td>
+</tr>
+<tr>
+<td>[属性名]</td>
+<td>提取含有属性名的标签</td>
+</tr>
+<tr>
+<td>[属性名=属性值]</td>
+<td>提取xxx属性名=xxx属性值的标签</td>
+</tr>
+<tr>
+<td>标签名.属性值</td>
+<td>提取属性为xx的标签</td>
+</tr>
+<tr>
+<td>,</td>
+<td>提取多个不同标签</td>
+</tr>
+<tr>
+<td>text</td>
+<td>提取标签下面的文本</td>
+</tr>
+</tbody></table>
+<h3 id="小案例-匹配新华网主题名称"><a href="#小案例-匹配新华网主题名称" class="headerlink" title="小案例-匹配新华网主题名称"></a>小案例-匹配新华网主题名称</h3><pre><code class="Python"># 导入包
+import requests
+from bs4 import BeautifulSoup
+
+# 构造url,user-agent请求头参数部分
+ua = &#123;
+    &#39;User-Agent&#39; : &#39;Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/80.0.3987.132 Safari/537.36&#39;
+&#125;
+url = &#39;http://www.xinhuanet.com/2020-03/28/c_1125782104.htm&#39;
+
+# 向指定的url发送get含有参数的请求
+response = requests.get(url,headers=ua)
+# 设置字符集
+response.encoding = &#39;utf-8&#39;
+# 返回网站对象
+res = response.text
+
+# 生成选择器对象
+html = BeautifulSoup(res,&quot;html.parser&quot;)
+# 匹配出数组
+title = html.select(&#39;div.h-title&#39;)[0].text
+
+print(title)
+</code></pre>
+]]></content>
+      <categories>
+        <category>Python</category>
+      </categories>
+      <tags>
+        <tag>Python爬虫</tag>
+      </tags>
+  </entry>
+  <entry>
     <title>Python爬虫-SQLAlchemy模块</title>
     <url>/2020/04/27/python-reptile-SQLAlchemy/</url>
     <content><![CDATA[<h3 id="介绍"><a href="#介绍" class="headerlink" title="介绍"></a>介绍</h3><blockquote>
@@ -1980,6 +1980,131 @@ session.commit()
 user = session.query(User).filter(User.id==&#39;5&#39;).one()
 # 关闭session:
 session.close()
+</code></pre>
+]]></content>
+      <categories>
+        <category>Python</category>
+      </categories>
+      <tags>
+        <tag>Python爬虫</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>Python爬虫-正则表达式</title>
+    <url>/2020/02/23/python-reptile-regularexpression/</url>
+    <content><![CDATA[<h3 id="正则表达式规则"><a href="#正则表达式规则" class="headerlink" title="正则表达式规则"></a>正则表达式规则</h3><table>
+<thead>
+<tr>
+<th>普通字符</th>
+<th>正则匹配</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>\n</td>
+<td>匹配换行符</td>
+</tr>
+<tr>
+<td>\t</td>
+<td>匹配制表符</td>
+</tr>
+<tr>
+<td>\w</td>
+<td>匹配字母，数字，下划线</td>
+</tr>
+<tr>
+<td>\W</td>
+<td>与上面相反</td>
+</tr>
+<tr>
+<td>\d</td>
+<td>匹配十进制数字</td>
+</tr>
+<tr>
+<td>\D</td>
+<td>与上面相反</td>
+</tr>
+<tr>
+<td>\s</td>
+<td>匹配空白字符</td>
+</tr>
+<tr>
+<td>\S</td>
+<td>与上面相反</td>
+</tr>
+<tr>
+<td>[ab89x]</td>
+<td>匹配ab89x中任意一个</td>
+</tr>
+<tr>
+<td>[^ab89x]</td>
+<td>与上面相反</td>
+</tr>
+<tr>
+<td>.</td>
+<td>匹配除换行外任意一个字符</td>
+</tr>
+<tr>
+<td>^</td>
+<td>匹配开始位置</td>
+</tr>
+<tr>
+<td>$</td>
+<td>匹配结束位置</td>
+</tr>
+<tr>
+<td>*</td>
+<td>前一个字符出现0\1\多次</td>
+</tr>
+<tr>
+<td>?</td>
+<td>前一个字符出现0\1</td>
+</tr>
+<tr>
+<td>+</td>
+<td>前一个字符出现1\多次</td>
+</tr>
+<tr>
+<td>{n}</td>
+<td>前一个字符恰好出现n次</td>
+</tr>
+<tr>
+<td>{n,}</td>
+<td>前一个字符至少出现n次</td>
+</tr>
+<tr>
+<td>{n,m}</td>
+<td>前一个字符至少n次最好m次</td>
+</tr>
+<tr>
+<td>|</td>
+<td>模式选择符或</td>
+</tr>
+<tr>
+<td>()</td>
+<td>想要提取的部分</td>
+</tr>
+<tr>
+<td>*?</td>
+<td>懒惰模式（精准匹配）</td>
+</tr>
+<tr>
+<td>+?</td>
+<td>同上</td>
+</tr>
+</tbody></table>
+<h3 id="语法"><a href="#语法" class="headerlink" title="语法"></a>语法</h3><ul>
+<li>导入集成包 <code>import re</code></li>
+<li>re.S | 使其匹配多行</li>
+<li>re.l | 使其匹配忽略大小写</li>
+<li><code>re.compile(&#39;&#39;,re.S或者re.l).findall(&#39;&#39;)</code></li>
+</ul>
+<h3 id="p-s"><a href="#p-s" class="headerlink" title="p.s"></a>p.s</h3><pre><code class="python">import re
+string = &#39;a89cdefg&#39;
+pat = &#39;.c(.*?)f&#39;
+data = re.compile(pat).findall(string)
+print(data)
+
+&gt;&gt;&gt; [&#39;de&#39;]
 </code></pre>
 ]]></content>
       <categories>
@@ -2155,131 +2280,6 @@ else:
       </categories>
       <tags>
         <tag>Python入库</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>Python爬虫-正则表达式</title>
-    <url>/2020/02/23/python-reptile-regularexpression/</url>
-    <content><![CDATA[<h3 id="正则表达式规则"><a href="#正则表达式规则" class="headerlink" title="正则表达式规则"></a>正则表达式规则</h3><table>
-<thead>
-<tr>
-<th>普通字符</th>
-<th>正则匹配</th>
-</tr>
-</thead>
-<tbody><tr>
-<td>\n</td>
-<td>匹配换行符</td>
-</tr>
-<tr>
-<td>\t</td>
-<td>匹配制表符</td>
-</tr>
-<tr>
-<td>\w</td>
-<td>匹配字母，数字，下划线</td>
-</tr>
-<tr>
-<td>\W</td>
-<td>与上面相反</td>
-</tr>
-<tr>
-<td>\d</td>
-<td>匹配十进制数字</td>
-</tr>
-<tr>
-<td>\D</td>
-<td>与上面相反</td>
-</tr>
-<tr>
-<td>\s</td>
-<td>匹配空白字符</td>
-</tr>
-<tr>
-<td>\S</td>
-<td>与上面相反</td>
-</tr>
-<tr>
-<td>[ab89x]</td>
-<td>匹配ab89x中任意一个</td>
-</tr>
-<tr>
-<td>[^ab89x]</td>
-<td>与上面相反</td>
-</tr>
-<tr>
-<td>.</td>
-<td>匹配除换行外任意一个字符</td>
-</tr>
-<tr>
-<td>^</td>
-<td>匹配开始位置</td>
-</tr>
-<tr>
-<td>$</td>
-<td>匹配结束位置</td>
-</tr>
-<tr>
-<td>*</td>
-<td>前一个字符出现0\1\多次</td>
-</tr>
-<tr>
-<td>?</td>
-<td>前一个字符出现0\1</td>
-</tr>
-<tr>
-<td>+</td>
-<td>前一个字符出现1\多次</td>
-</tr>
-<tr>
-<td>{n}</td>
-<td>前一个字符恰好出现n次</td>
-</tr>
-<tr>
-<td>{n,}</td>
-<td>前一个字符至少出现n次</td>
-</tr>
-<tr>
-<td>{n,m}</td>
-<td>前一个字符至少n次最好m次</td>
-</tr>
-<tr>
-<td>|</td>
-<td>模式选择符或</td>
-</tr>
-<tr>
-<td>()</td>
-<td>想要提取的部分</td>
-</tr>
-<tr>
-<td>*?</td>
-<td>懒惰模式（精准匹配）</td>
-</tr>
-<tr>
-<td>+?</td>
-<td>同上</td>
-</tr>
-</tbody></table>
-<h3 id="语法"><a href="#语法" class="headerlink" title="语法"></a>语法</h3><ul>
-<li>导入集成包 <code>import re</code></li>
-<li>re.S | 使其匹配多行</li>
-<li>re.l | 使其匹配忽略大小写</li>
-<li><code>re.compile(&#39;&#39;,re.S或者re.l).findall(&#39;&#39;)</code></li>
-</ul>
-<h3 id="p-s"><a href="#p-s" class="headerlink" title="p.s"></a>p.s</h3><pre><code class="python">import re
-string = &#39;a89cdefg&#39;
-pat = &#39;.c(.*?)f&#39;
-data = re.compile(pat).findall(string)
-print(data)
-
-&gt;&gt;&gt; [&#39;de&#39;]
-</code></pre>
-]]></content>
-      <categories>
-        <category>Python</category>
-      </categories>
-      <tags>
-        <tag>Python爬虫</tag>
       </tags>
   </entry>
   <entry>
@@ -2546,6 +2546,221 @@ if code == 200 :
       </tags>
   </entry>
   <entry>
+    <title>Python爬虫-多线程多进程</title>
+    <url>/2021/03/06/python-thread&amp;threading/</url>
+    <content><![CDATA[<p><strong>线程进程协程关系与创建  –&gt; 重要 –&gt; 阿里面试时被问到</strong></p>
+<ol>
+<li>进程：一个运行的程序（代码）就是一个进程，没有运行的代码叫程序，进程是系统资源分配的最小单位，进程拥有自己独立的内存空间，所有进程间数据不共享，开销大。</li>
+<li>线程: cpu调度执行的最小单位，也叫执行路径，不能独立存在，依赖进程存在，一个进程至少有一个线程，叫主线程，而多个线程共享内存（数据共享，共享全局变量),从而极大地提高了程序的运行效率。</li>
+<li>协程: 是一种用户态的轻量级线程，协程的调度完全由用户控制。协程拥有自己的寄存器上下文和栈。协程调度时，将寄存器上下文和栈保存到其他地方，在切回来的时候，恢复先前保存的寄存器上下文和栈，直接操中栈则基本没有内核切换的开销，可以不加锁的访问全局变量，所以上下文的切换非常快。</li>
+</ol>
+<ul>
+<li>协程和线程一样共享堆，不共享栈</li>
+<li>协程和线程的区别是：协程避免了无意义的调度，由此可以提高性能;同时，协程也失去了标准线程使用多CPU的能力</li>
+</ul>
+<p><img src="https://i.loli.net/2021/05/12/6D9SRkdWaeQxNXM.jpg" alt="进程和线程的关系"></p>
+<h3 id="thread-多线程"><a href="#thread-多线程" class="headerlink" title="_thread 多线程"></a>_thread 多线程</h3><pre><code class="Python"># 导入包
+import _thread
+import time
+
+
+# 为线程定义一个函数
+def print_time(threadName, delay):
+    count = 0
+    while count &lt; 5:
+        time.sleep(delay)
+        count += 1
+        print(&quot;%s: %s&quot; % (threadName, time.ctime(time.time())))
+
+
+# 创建两个线程
+try:
+    # 创建线程 thread.start_new_thread(function, args[, kwargs])
+    _thread.start_new_thread(print_time, (&quot;Thread-1&quot;, 2,))
+    _thread.start_new_thread(print_time, (&quot;Thread-2&quot;, 4,))
+except:
+    print(&quot;Error: 无法启动线程&quot;)
+
+# 主线程等待，否则直接退出
+while 1:
+    pass
+</code></pre>
+<h3 id="threading-多线程"><a href="#threading-多线程" class="headerlink" title="threading 多线程"></a>threading 多线程</h3><pre><code class="Python"># 导入包
+import threading
+import time
+
+exitFlag = 0
+
+
+# 继承父类threading.Thread
+class myThread(threading.Thread):
+    def __init__(self, threadID, name, counter):
+        threading.Thread.__init__(self)
+        self.threadID = threadID
+        self.name = name
+        self.counter = counter
+
+    # 把要执行的代码写到run函数里面 线程在创建后会直接运行run函数
+    def run(self):
+        print(&quot;开始线程：&quot; + self.name)
+        print_time(self.name, self.counter, 5)
+        print(&quot;退出线程：&quot; + self.name)
+
+
+def print_time(threadName, delay, counter):
+    while counter:
+        if exitFlag:
+            print(exitFlag)
+            threadName.exit()
+        time.sleep(delay)
+        print(&quot;%s: %s&quot; % (threadName, time.ctime(time.time())))
+        counter -= 1
+
+
+# 创建新线程
+thread1 = myThread(1, &quot;Thread-1&quot;, 1)
+thread2 = myThread(2, &quot;Thread-2&quot;, 2)
+
+# 开启新线程
+thread1.start()
+thread2.start()
+thread1.join()
+thread2.join()
+print(&quot;退出主线程&quot;)
+</code></pre>
+<h3 id="threading-多线程同步"><a href="#threading-多线程同步" class="headerlink" title="threading 多线程同步"></a>threading 多线程同步</h3><pre><code class="Python"># 导入包
+import threading
+import time
+
+
+class myThread(threading.Thread):
+    def __init__(self, threadID, name, counter):
+        threading.Thread.__init__(self)
+        self.threadID = threadID
+        self.name = name
+        self.counter = counter
+
+    def run(self):
+        print(&quot;开启线程： &quot; + self.name)
+        # 获取锁，用于线程同步
+        threadLock.acquire()
+        print_time(self.name, self.counter, 3)
+        # 释放锁，开启下一个线程
+        threadLock.release()
+
+
+def print_time(threadName, delay, counter):
+    while counter:
+        time.sleep(delay)
+        print(&quot;%s: %s&quot; % (threadName, time.ctime(time.time())))
+        counter -= 1
+
+
+threadLock = threading.Lock()
+threads = []
+
+# 创建新线程
+thread1 = myThread(1, &quot;Thread-1&quot;, 1)
+thread2 = myThread(2, &quot;Thread-2&quot;, 2)
+
+# 开启新线程
+thread1.start()
+thread2.start()
+
+# 添加线程到线程列表
+threads.append(thread1)
+threads.append(thread2)
+
+# 等待所有线程完成
+for t in threads:
+    t.join()
+print(&quot;退出主线程&quot;)
+</code></pre>
+<h3 id="Queue线程优先级队列"><a href="#Queue线程优先级队列" class="headerlink" title="Queue线程优先级队列"></a>Queue线程优先级队列</h3><ul>
+<li>Queue.qsize () 返回队列的大小</li>
+<li>Queue.empty () 如果队列为空，返回 True, 反之 False</li>
+<li>Queue.full () 如果队列满了，返回 True, 反之 False</li>
+<li>Queue.full 与 maxsize 大小对应</li>
+<li>Queue.get ([block [, timeout]]) 获取队列，timeout 等待时间</li>
+<li>Queue.get_nowait () 相当 Queue.get (False)</li>
+<li>Queue.put (item) 写入队列，timeout 等待时间</li>
+<li>Queue.put_nowait (item) 相当 Queue.put (item, False)</li>
+<li>Queue.task_done () 在完成一项工作之后，Queue.task_done () 函数向任务已经完成的队列发送一个信号</li>
+<li>Queue.join () 实际上意味着等到队列为空，再执行别的操作</li>
+</ul>
+<pre><code class="python">import queue
+import threading
+import time
+
+exitFlag = 0
+
+
+class myThread(threading.Thread):
+    def __init__(self, threadID, name, q):
+        threading.Thread.__init__(self)
+        self.threadID = threadID
+        self.name = name
+        self.q = q
+
+    def run(self):
+        print(&quot;开启线程：&quot; + self.name)
+        process_data(self.name, self.q)
+        print(&quot;退出线程：&quot; + self.name)
+
+
+def process_data(threadName, q):
+    while not exitFlag:
+        queueLock.acquire()
+        if not workQueue.empty():
+            data = q.get()
+            queueLock.release()
+            print(&quot;%s processing %s&quot; % (threadName, data))
+        else:
+            queueLock.release()
+        time.sleep(1)
+
+
+threadList = [&quot;Thread-1&quot;, &quot;Thread-2&quot;, &quot;Thread-3&quot;]
+nameList = [&quot;One&quot;, &quot;Two&quot;, &quot;Three&quot;, &quot;Four&quot;, &quot;Five&quot;]
+queueLock = threading.Lock()
+workQueue = queue.Queue(10)
+threads = []
+threadID = 1
+
+# 创建新线程
+for tName in threadList:
+    thread = myThread(threadID, tName, workQueue)
+    thread.start()
+    threads.append(thread)
+    threadID += 1
+
+# 填充队列
+queueLock.acquire()
+for word in nameList:
+    workQueue.put(word)
+queueLock.release()
+
+# 等待队列清空
+while not workQueue.empty():
+    pass
+
+# 通知线程是时候退出
+exitFlag = 1
+
+# 等待所有线程完成
+for t in threads:
+    t.join()
+print(&quot;退出主线程&quot;)
+</code></pre>
+]]></content>
+      <categories>
+        <category>Python</category>
+      </categories>
+      <tags>
+        <tag>Python爬虫</tag>
+      </tags>
+  </entry>
+  <entry>
     <title>Python爬虫-Urllib初探</title>
     <url>/2020/02/23/python-reptile-urllib/</url>
     <content><![CDATA[<h3 id="通过爬虫百度html初探urllib语法"><a href="#通过爬虫百度html初探urllib语法" class="headerlink" title="通过爬虫百度html初探urllib语法"></a>通过爬虫百度html初探urllib语法</h3><pre><code class="Python"># 导入包urllib
@@ -2584,6 +2799,74 @@ txt= json.loads(data)
 #匹配字段
 res=txt.get(&quot;hitokoto&quot;)
 print(res)
+</code></pre>
+]]></content>
+      <categories>
+        <category>Python</category>
+      </categories>
+      <tags>
+        <tag>Python爬虫</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>Python爬虫-Xpath模块</title>
+    <url>/2020/03/08/python-reptile-xpath/</url>
+    <content><![CDATA[<h3 id="安装Requests模块"><a href="#安装Requests模块" class="headerlink" title="安装Requests模块"></a>安装Requests模块</h3><pre><code class="Cmd">pip install lxml
+</code></pre>
+<h3 id="Xpath表达式规则"><a href="#Xpath表达式规则" class="headerlink" title="Xpath表达式规则"></a>Xpath表达式规则</h3><table>
+<thead>
+<tr>
+<th>普通字符</th>
+<th>正则匹配</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>/</td>
+<td>逐层提取</td>
+</tr>
+<tr>
+<td>text()</td>
+<td>提取标签下面的文本</td>
+</tr>
+<tr>
+<td>//标签名**</td>
+<td>提取所有名为**的标签</td>
+</tr>
+<tr>
+<td>//标签名[@属性=’属性值’]</td>
+<td>提取属性为xx的标签</td>
+</tr>
+<tr>
+<td>@属性名</td>
+<td>代表取某个属性值</td>
+</tr>
+</tbody></table>
+<h3 id="小案例-匹配豆瓣影视介绍"><a href="#小案例-匹配豆瓣影视介绍" class="headerlink" title="小案例-匹配豆瓣影视介绍"></a>小案例-匹配豆瓣影视介绍</h3><pre><code class="Python"># 导入包
+import requests
+from lxml import etree
+
+# 构造url,user-agent请求头参数部分
+ua = &#123;
+    &#39;User-Agent&#39; : &#39;Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/80.0.3987.132 Safari/537.36&#39;
+&#125;
+url = &#39;https://movie.douban.com/subject/25887288/&#39;
+
+# 向指定的url发送get含有参数的请求
+response = requests.get(url,headers=ua)
+
+# 返回网站对象
+res = response.text
+# 生成选择器对象
+html = etree.HTML(res)
+# 匹配对象
+pat = &#39;//span[@property=&quot;v:summary&quot;]/text()&#39;
+# 匹配
+data = html.xpath(pat)
+# 遍历数组
+for i in data:
+    #处理空格
+    result = i.strip()
+    print(result)
 </code></pre>
 ]]></content>
       <categories>
@@ -3003,289 +3286,6 @@ redis-sentinel /etc/sentinel.conf
       <tags>
         <tag>云计算</tag>
         <tag>openstack</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>Python爬虫-Xpath模块</title>
-    <url>/2020/03/08/python-reptile-xpath/</url>
-    <content><![CDATA[<h3 id="安装Requests模块"><a href="#安装Requests模块" class="headerlink" title="安装Requests模块"></a>安装Requests模块</h3><pre><code class="Cmd">pip install lxml
-</code></pre>
-<h3 id="Xpath表达式规则"><a href="#Xpath表达式规则" class="headerlink" title="Xpath表达式规则"></a>Xpath表达式规则</h3><table>
-<thead>
-<tr>
-<th>普通字符</th>
-<th>正则匹配</th>
-</tr>
-</thead>
-<tbody><tr>
-<td>/</td>
-<td>逐层提取</td>
-</tr>
-<tr>
-<td>text()</td>
-<td>提取标签下面的文本</td>
-</tr>
-<tr>
-<td>//标签名**</td>
-<td>提取所有名为**的标签</td>
-</tr>
-<tr>
-<td>//标签名[@属性=’属性值’]</td>
-<td>提取属性为xx的标签</td>
-</tr>
-<tr>
-<td>@属性名</td>
-<td>代表取某个属性值</td>
-</tr>
-</tbody></table>
-<h3 id="小案例-匹配豆瓣影视介绍"><a href="#小案例-匹配豆瓣影视介绍" class="headerlink" title="小案例-匹配豆瓣影视介绍"></a>小案例-匹配豆瓣影视介绍</h3><pre><code class="Python"># 导入包
-import requests
-from lxml import etree
-
-# 构造url,user-agent请求头参数部分
-ua = &#123;
-    &#39;User-Agent&#39; : &#39;Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/80.0.3987.132 Safari/537.36&#39;
-&#125;
-url = &#39;https://movie.douban.com/subject/25887288/&#39;
-
-# 向指定的url发送get含有参数的请求
-response = requests.get(url,headers=ua)
-
-# 返回网站对象
-res = response.text
-# 生成选择器对象
-html = etree.HTML(res)
-# 匹配对象
-pat = &#39;//span[@property=&quot;v:summary&quot;]/text()&#39;
-# 匹配
-data = html.xpath(pat)
-# 遍历数组
-for i in data:
-    #处理空格
-    result = i.strip()
-    print(result)
-</code></pre>
-]]></content>
-      <categories>
-        <category>Python</category>
-      </categories>
-      <tags>
-        <tag>Python爬虫</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>Python爬虫-多线程多进程</title>
-    <url>/2021/03/06/python-thread&amp;threading/</url>
-    <content><![CDATA[<p><strong>线程进程协程关系与创建  –&gt; 重要 –&gt; 阿里面试时被问到</strong></p>
-<ol>
-<li>进程：一个运行的程序（代码）就是一个进程，没有运行的代码叫程序，进程是系统资源分配的最小单位，进程拥有自己独立的内存空间，所有进程间数据不共享，开销大。</li>
-<li>线程: cpu调度执行的最小单位，也叫执行路径，不能独立存在，依赖进程存在，一个进程至少有一个线程，叫主线程，而多个线程共享内存（数据共享，共享全局变量),从而极大地提高了程序的运行效率。</li>
-<li>协程: 是一种用户态的轻量级线程，协程的调度完全由用户控制。协程拥有自己的寄存器上下文和栈。协程调度时，将寄存器上下文和栈保存到其他地方，在切回来的时候，恢复先前保存的寄存器上下文和栈，直接操中栈则基本没有内核切换的开销，可以不加锁的访问全局变量，所以上下文的切换非常快。</li>
-</ol>
-<ul>
-<li>协程和线程一样共享堆，不共享栈</li>
-<li>协程和线程的区别是：协程避免了无意义的调度，由此可以提高性能;同时，协程也失去了标准线程使用多CPU的能力</li>
-</ul>
-<p><img src="https://i.loli.net/2021/05/12/6D9SRkdWaeQxNXM.jpg" alt="进程和线程的关系"></p>
-<h3 id="thread-多线程"><a href="#thread-多线程" class="headerlink" title="_thread 多线程"></a>_thread 多线程</h3><pre><code class="Python"># 导入包
-import _thread
-import time
-
-
-# 为线程定义一个函数
-def print_time(threadName, delay):
-    count = 0
-    while count &lt; 5:
-        time.sleep(delay)
-        count += 1
-        print(&quot;%s: %s&quot; % (threadName, time.ctime(time.time())))
-
-
-# 创建两个线程
-try:
-    # 创建线程 thread.start_new_thread(function, args[, kwargs])
-    _thread.start_new_thread(print_time, (&quot;Thread-1&quot;, 2,))
-    _thread.start_new_thread(print_time, (&quot;Thread-2&quot;, 4,))
-except:
-    print(&quot;Error: 无法启动线程&quot;)
-
-# 主线程等待，否则直接退出
-while 1:
-    pass
-</code></pre>
-<h3 id="threading-多线程"><a href="#threading-多线程" class="headerlink" title="threading 多线程"></a>threading 多线程</h3><pre><code class="Python"># 导入包
-import threading
-import time
-
-exitFlag = 0
-
-
-# 继承父类threading.Thread
-class myThread(threading.Thread):
-    def __init__(self, threadID, name, counter):
-        threading.Thread.__init__(self)
-        self.threadID = threadID
-        self.name = name
-        self.counter = counter
-
-    # 把要执行的代码写到run函数里面 线程在创建后会直接运行run函数
-    def run(self):
-        print(&quot;开始线程：&quot; + self.name)
-        print_time(self.name, self.counter, 5)
-        print(&quot;退出线程：&quot; + self.name)
-
-
-def print_time(threadName, delay, counter):
-    while counter:
-        if exitFlag:
-            print(exitFlag)
-            threadName.exit()
-        time.sleep(delay)
-        print(&quot;%s: %s&quot; % (threadName, time.ctime(time.time())))
-        counter -= 1
-
-
-# 创建新线程
-thread1 = myThread(1, &quot;Thread-1&quot;, 1)
-thread2 = myThread(2, &quot;Thread-2&quot;, 2)
-
-# 开启新线程
-thread1.start()
-thread2.start()
-thread1.join()
-thread2.join()
-print(&quot;退出主线程&quot;)
-</code></pre>
-<h3 id="threading-多线程同步"><a href="#threading-多线程同步" class="headerlink" title="threading 多线程同步"></a>threading 多线程同步</h3><pre><code class="Python"># 导入包
-import threading
-import time
-
-
-class myThread(threading.Thread):
-    def __init__(self, threadID, name, counter):
-        threading.Thread.__init__(self)
-        self.threadID = threadID
-        self.name = name
-        self.counter = counter
-
-    def run(self):
-        print(&quot;开启线程： &quot; + self.name)
-        # 获取锁，用于线程同步
-        threadLock.acquire()
-        print_time(self.name, self.counter, 3)
-        # 释放锁，开启下一个线程
-        threadLock.release()
-
-
-def print_time(threadName, delay, counter):
-    while counter:
-        time.sleep(delay)
-        print(&quot;%s: %s&quot; % (threadName, time.ctime(time.time())))
-        counter -= 1
-
-
-threadLock = threading.Lock()
-threads = []
-
-# 创建新线程
-thread1 = myThread(1, &quot;Thread-1&quot;, 1)
-thread2 = myThread(2, &quot;Thread-2&quot;, 2)
-
-# 开启新线程
-thread1.start()
-thread2.start()
-
-# 添加线程到线程列表
-threads.append(thread1)
-threads.append(thread2)
-
-# 等待所有线程完成
-for t in threads:
-    t.join()
-print(&quot;退出主线程&quot;)
-</code></pre>
-<h3 id="Queue线程优先级队列"><a href="#Queue线程优先级队列" class="headerlink" title="Queue线程优先级队列"></a>Queue线程优先级队列</h3><ul>
-<li>Queue.qsize () 返回队列的大小</li>
-<li>Queue.empty () 如果队列为空，返回 True, 反之 False</li>
-<li>Queue.full () 如果队列满了，返回 True, 反之 False</li>
-<li>Queue.full 与 maxsize 大小对应</li>
-<li>Queue.get ([block [, timeout]]) 获取队列，timeout 等待时间</li>
-<li>Queue.get_nowait () 相当 Queue.get (False)</li>
-<li>Queue.put (item) 写入队列，timeout 等待时间</li>
-<li>Queue.put_nowait (item) 相当 Queue.put (item, False)</li>
-<li>Queue.task_done () 在完成一项工作之后，Queue.task_done () 函数向任务已经完成的队列发送一个信号</li>
-<li>Queue.join () 实际上意味着等到队列为空，再执行别的操作</li>
-</ul>
-<pre><code class="python">import queue
-import threading
-import time
-
-exitFlag = 0
-
-
-class myThread(threading.Thread):
-    def __init__(self, threadID, name, q):
-        threading.Thread.__init__(self)
-        self.threadID = threadID
-        self.name = name
-        self.q = q
-
-    def run(self):
-        print(&quot;开启线程：&quot; + self.name)
-        process_data(self.name, self.q)
-        print(&quot;退出线程：&quot; + self.name)
-
-
-def process_data(threadName, q):
-    while not exitFlag:
-        queueLock.acquire()
-        if not workQueue.empty():
-            data = q.get()
-            queueLock.release()
-            print(&quot;%s processing %s&quot; % (threadName, data))
-        else:
-            queueLock.release()
-        time.sleep(1)
-
-
-threadList = [&quot;Thread-1&quot;, &quot;Thread-2&quot;, &quot;Thread-3&quot;]
-nameList = [&quot;One&quot;, &quot;Two&quot;, &quot;Three&quot;, &quot;Four&quot;, &quot;Five&quot;]
-queueLock = threading.Lock()
-workQueue = queue.Queue(10)
-threads = []
-threadID = 1
-
-# 创建新线程
-for tName in threadList:
-    thread = myThread(threadID, tName, workQueue)
-    thread.start()
-    threads.append(thread)
-    threadID += 1
-
-# 填充队列
-queueLock.acquire()
-for word in nameList:
-    workQueue.put(word)
-queueLock.release()
-
-# 等待队列清空
-while not workQueue.empty():
-    pass
-
-# 通知线程是时候退出
-exitFlag = 1
-
-# 等待所有线程完成
-for t in threads:
-    t.join()
-print(&quot;退出主线程&quot;)
-</code></pre>
-]]></content>
-      <categories>
-        <category>Python</category>
-      </categories>
-      <tags>
-        <tag>Python爬虫</tag>
       </tags>
   </entry>
 </search>
