@@ -1,0 +1,3291 @@
+<?xml version="1.0" encoding="utf-8"?>
+<search>
+  <entry>
+    <title>云计算-容器云笔记一（容器编排）</title>
+    <url>/2021/05/11/cloudcomping-container-1/</url>
+    <content><![CDATA[<h2 id="wordpress编排"><a href="#wordpress编排" class="headerlink" title="wordpress编排"></a>wordpress编排</h2><blockquote>
+<p>在master 节点上编写/root/wordpress/docker-compose.yaml文件，具体要求如下：<br>（1）容器名称：wordpress；镜像：wordpress:latest；端口映射：82:80；<br>（2）容器名称：mysql；镜像：mysql:5.6；<br>（3）MySQL root 用户密码：123456；<br>（4）创建数据库wordpress。</p>
+</blockquote>
+<pre><code class="yaml">version: &#39;3.3&#39;
+services:
+  mysql:
+    image: mysql:5.6
+    expose:
+      - 3306
+    restart: always
+    environment:
+      - MYSQL_ROOT_PASSWORD=123456
+  wordpress:
+    image: wordpress
+    ports:
+      - 82:80
+    restart: always
+    environment:
+      - WORDPRESS_DB_HOST=mysql
+      - WORDPRESS_DB_USER=root
+      - WORDPRESS_DB_PASSWORD=123456
+</code></pre>
+<h2 id="web-商城应用编排"><a href="#web-商城应用编排" class="headerlink" title="web 商城应用编排"></a>web 商城应用编排</h2><h3 id="容器化部署MariaDB"><a href="#容器化部署MariaDB" class="headerlink" title="容器化部署MariaDB"></a>容器化部署MariaDB</h3><blockquote>
+<p>在master 节点上编写/root/mariadb/Dockerfile 文件，基于提供的软件包gpmall-single.tar 构建chinaskill-mariadb:v1.1 镜像，具体要求如下：<br>（1）基础镜像：centos:centos7.5.1804；<br>（2）作者：Chinaskill；<br>（3）设置数据库密码：123456；<br>（4）创建数据库gpmall 并导入数据库文件gpmall.sql；<br>（5）设置字符编码：UTF-8；<br>（6）开放端口：3306；<br>（7）设置服务开机自启。</p>
+</blockquote>
+<pre><code class="Dockerfile">FROM centos:centos7.5.1804
+MAINTAINER Chinaskill
+RUN rm -rf /etc/yum.repos.d/*
+ADD ftp.repo /etc/yum.repos.d/
+RUN yum clean all &amp;&amp; yum list
+RUN yum install -y mariadb-server
+ADD gpmall.sql .
+ADD init.sh .
+RUN chmod +x init.sh
+ENV LC_ALL en_US.UTF-8
+RUN sed -i &quot;13cport = 8066&quot; /etc/my.cnf.d/server.cnf
+RUN ./init.sh
+EXPOSE 3306 8066
+CMD [&quot;mysqld_safe&quot;]
+</code></pre>
+<pre><code class="shell">mysql_install_db --user=mysql
+mysqld_safe &amp;
+sleep 3s
+mysqladmin -u root password &#39;123456&#39;
+sleep 3s
+mysql -uroot -p123456 -e &quot;GRANT ALL PRIVILEGES ON *.* TO &#39;root&#39;@&#39;%&#39; IDENTIFIED BY &#39;123456&#39;&quot; 
+sleep 3s
+mysql -uroot -p123456 -e &quot;create database gpmall;use gpmall;&quot;
+mysql -uroot -p123456 gpmall &lt; gpmall.sql
+</code></pre>
+<h3 id="容器化部署Redis"><a href="#容器化部署Redis" class="headerlink" title="容器化部署Redis"></a>容器化部署Redis</h3><blockquote>
+<p>在master 节点上编写/root/redis/Dockerfile 文件，基于提供的软件包gpmall-single.tar 构建chinaskill-redis:v1.1 镜像，具体要求如下：<br>（1）基础镜像：centos:centos7.5.1804；<br>（2）作者：Chinaskill；<br>（3）修改配置文件中的bind 127.0.0.1 为bind 0.0.0.0；<br>（4）设置Redis 免密，并关闭保护模式；<br>（5）开放端口：6379；<br>（6）设置服务开机自启。</p>
+</blockquote>
+<pre><code class="Dockerfile">FROM centos:centos7.5.1804
+MAINTAINER Chinaskill
+RUN rm -rf /etc/yum.repos.d/*
+ADD ftp.repo /etc/yum.repos.d/
+RUN yum clean all &amp;&amp; yum list
+RUN yum install redis -y
+RUN sed -i &#39;s/bind 127.0.0.1/bind 0.0.0.0/g&#39; /etc/redis.conf
+RUN sed -i &#39;s/protected-mode yes/protected-mode no/g&#39; /etc/redis.conf
+EXPOSE 6379
+ENTRYPOINT redis-server /etc/redis.conf
+CMD [&quot;redis-server&quot;]
+</code></pre>
+<h3 id="容器化部署Zookeeper"><a href="#容器化部署Zookeeper" class="headerlink" title="容器化部署Zookeeper"></a>容器化部署Zookeeper</h3><blockquote>
+<p>在master 节点上编写/root/zookeeper/Dockerfile 文件，基于提供的软件包gpmall-single.tar 构建chinaskill-zookeeper:v1.1镜像，具体要求如下：<br>（1）基础镜像：centos:centos7.5.1804；<br>（2）作者：Chinaskill；<br>（3）开放端口：2181；<br>（4）设置服务开机自启。</p>
+</blockquote>
+<pre><code class="Dockerfile">FROM centos:centos7.5.1804
+MAINTAINER Chinaskill
+EXPOSE 2181
+RUN rm -rf /etc/yum.repos.d/*
+COPY ftp.repo /etc/yum.repos.d/ftp.repo
+ADD zookeeper-3.4.14.tar.gz /opt
+RUN yum -y install java-1.8.0-openjdk java-1.8.0-openjdk-devel
+RUN mv /opt/zookeeper-3.4.14/conf/zoo_sample.cfg /opt/zookeeper-3.4.14/conf/zoo.cfg
+CMD [&quot;/opt/zookeeper-3.4.14/bin/zkServer.sh&quot;, &quot;start-foreground&quot;]
+</code></pre>
+<h3 id="容器化部署Kafka"><a href="#容器化部署Kafka" class="headerlink" title="容器化部署Kafka"></a>容器化部署Kafka</h3><blockquote>
+<p>在master 节点上编写/root/kafka/Dockerfile 文件，基于提供的软件包gpmall-single.tar 构建chinaskill-kafka:v1.1 镜像，具体要求如下：<br>（1）基础镜像：centos:centos7.5.1804；<br>（2）作者：Chinaskill；<br>（3）开放端口：9092；<br>（4）设置服务开机自启。</p>
+</blockquote>
+<pre><code class="Dockerfile">FROM centos:centos7.5.1804
+MAINTAINER Chinaskill
+RUN rm -rvf /etc/yum.repos.d/*
+COPY ftp.repo /etc/yum.repos.d/local.repo
+RUN yum clean all
+RUN yum list
+RUN yum -y install java-1.8.0
+ADD kafka_2.11-1.1.1.tgz /usr/local
+RUN sed -i &#39;s/localhost:2181/zk1.mall:2181/g&#39; /usr/local/kafka_2.11-1.1.1/config/server.properties  #单节点
+#RUN sed -i &#39;s/localhost:2181/zk1.mall:2181,zk2.mall:2181,zk3.mall:2181/g&#39; /usr/local/kafka_2.11-1.1.1/config/server.properties #多节点集群
+EXPOSE 9092
+CMD [&quot;/usr/local/kafka_2.11-1.1.1/bin/kafka-server-start.sh&quot;, &quot;/usr/local/kafka_2.11-1.1.1/config/server.properties&quot;]
+</code></pre>
+<h3 id="容器化部署Nginx"><a href="#容器化部署Nginx" class="headerlink" title="容器化部署Nginx"></a>容器化部署Nginx</h3><blockquote>
+<p>在master 节点上编写/root/nginx/Dockerfile 文件，基于提供的软件包gpmall-single.tar 构建chinaskill-nginx:v1.1 镜像，具体要求如下：<br>（1）基础镜像：centos:centos7.5.1804；<br>（2）作者：Chinaskill；<br>（3）编写/etc/nginx/conf.d/default.conf 文件，配置反向代<br>理，将80 端口请求转发到8081、8082 和8083；<br>（4）将dist.tar 解压并复制到/usr/share/nginx/html/目录下；<br>（5）开放端口：80、443、8081、8082、8083；<br>（6）设置服务开机自启。</p>
+</blockquote>
+<pre><code class="Dockerfile">FROM centos:centos7.5.1804
+MAINTAINER chinaskill
+RUN rm -rf /etc/yum.repos.d/*
+ADD ftp.repo /etc/yum.repos.d/
+ADD *.jar /root/
+ADD setup.sh /root/
+RUN yum -y install nginx java-1.8.0-openjdk java-1.8.0-openjdk-devel
+RUN sed -i &#39;1a location /shopping &#123; proxy_pass http://127.0.0.1:8081 ;&#125;&#39; /etc/nginx/conf.d/default.conf
+RUN sed -i &#39;2a location /user &#123; proxy_pass http://127.0.0.1:8082 ;&#125;&#39; /etc/nginx/conf.d/default.conf
+RUN sed -i &#39;3a location /cashier &#123; proxy_pass http://127.0.0.1:8083 ;&#125;&#39; /etc/nginx/conf.d/default.conf
+RUN chmod +x /root/setup.sh
+RUN rm -rf /usr/share/nginx/html/
+EXPOSE 80 8081 8082 8083
+ADD dist/ /usr/share/nginx/html/
+CMD [&quot;nginx&quot;,&quot;-g&quot;,&quot;daemon off;&quot;]
+</code></pre>
+<pre><code class="shell">sleep 5
+nohup java -jar /root/shopping-provider-0.0.1-SNAPSHOT.jar &amp;
+sleep 30
+nohup java -jar /root/user-provider-0.0.1-SNAPSHOT.jar &amp;
+sleep 30
+nohup java -jar /root/gpmall-shopping-0.0.1-SNAPSHOT.jar &amp;
+sleep 30
+nohup java -jar /root/gpmall-user-0.0.1-SNAPSHOT.jar &amp;
+sleep 30
+while [[ true ]]; do
+    sleep 1
+done
+</code></pre>
+<h3 id="编排部署GPMall-商城"><a href="#编排部署GPMall-商城" class="headerlink" title="编排部署GPMall 商城"></a>编排部署GPMall 商城</h3><blockquote>
+<p>在master 节点上编写/root/chinaskillmall/docker-compose.yaml 文件，具体要求如下：<br>（1）容器1 名称：mysql；镜像：chinaskill-mariadb:v1.1；<br>端口映射：3306:3306；<br>（2）容器2 名称：redis；镜像：chinaskill-redis:v1.1；端<br>口映射：6379:6379；<br>（3）容器3 名称：kafka；镜像：chinaskill-kafka:v1.1；端<br>口映射：9092:9092；<br>（4）容器4 名称：zookeeper；镜像：chinaskill-zookeeper:v1.1；<br>端口映射：2181:2181；<br>（5）容器5 名称：nginx；镜像：chinaskill-nginx:v1.1；端<br>口映射：80:80，443:443。</p>
+</blockquote>
+<h4 id="docker-compose单节点编排"><a href="#docker-compose单节点编排" class="headerlink" title="docker-compose单节点编排"></a>docker-compose单节点编排</h4><pre><code class="yaml">version: &#39;3&#39;
+services:
+  mall-mysql:
+    image: chinaskillmall-mysql:v1.1
+    ports:
+      - 13306:3306
+ 
+  mall-redis:
+    image: chinaskillmall-redis:v1.1
+    ports:
+      - 16379:6379
+ 
+  mall-kafka:
+    image: chinaskillmall-kafka:v1.1
+    ports:
+      - 19092:9092
+    links:
+    - mall-zookeeper:zk1.mall
+
+  mall-zookeeper:
+    image: chinaskillmall-zookeeper:v1.1
+    ports:
+      - 12181:2181
+
+  mall-nginx:
+    image: chinaskillmall-nginx:v1.1
+    links:
+      - mall-mysql:mysql.mall
+      - mall-redis:redis.mall
+      - mall-kafka:kafka1.mall
+      - mall-zookeeper:zk1.mall
+    ports:
+      - 83:80
+      - 1443:443
+    command: [&quot;sh&quot;,&quot;-c&quot;,&quot;nginx &amp;&amp; /root/setup.sh&quot;]
+</code></pre>
+<h4 id="docker-compose多节点集群编排"><a href="#docker-compose多节点集群编排" class="headerlink" title="docker-compose多节点集群编排"></a>docker-compose多节点集群编排</h4><pre><code class="yaml">version: &#39;3&#39;
+services:
+  mall-mysql:
+    image: chinaskillmall-mysql:v1.1
+    ports:
+      - 13306:3306
+ 
+  mall-redis:
+    image: chinaskillmall-redis:v1.1
+    ports:
+      - 16379:6379
+ 
+  mall-kafka:
+    image: chinaskillmall-kafka:v1.2
+    ports:
+      - 19092:9092
+    links:
+    - mall-zookeeper1:zk1.mall
+    - mall-zookeeper2:zk2.mall
+    - mall-zookeeper3:zk3.mall
+
+  mall-zookeeper1:
+    image: chinaskillmall-zookeeper:v1.1
+
+  mall-zookeeper2:
+    image: chinaskillmall-zookeeper:v1.1
+
+  mall-zookeeper3:
+    image: chinaskillmall-zookeeper:v1.1
+
+
+  mall-nginx:
+    image: chinaskillmall-nginx:v1.1
+    links:
+      - mall-mysql:mysql.mall
+      - mall-redis:redis.mall
+      - mall-kafka:kafka1.mall
+      - mall-zookeeper1:zk1.mall
+      - mall-zookeeper2:zk2.mall
+      - mall-zookeeper3:zk3.mall
+    ports:
+      - 83:80
+      - 1443:443
+    command: [&quot;sh&quot;,&quot;-c&quot;,&quot;nginx &amp;&amp; /root/setup.sh&quot;]
+</code></pre>
+<h4 id="k8s编排"><a href="#k8s编排" class="headerlink" title="k8s编排"></a>k8s编排</h4><blockquote>
+<p>借助kompose工具将docker-compose转换k8s模板</p>
+</blockquote>
+<h5 id="安装kompose"><a href="#安装kompose" class="headerlink" title="安装kompose"></a>安装kompose</h5><pre><code class="shell">curl -L https://github.com/kubernetes/kompose/releases/download/v1.1.0/kompose-linux-amd64 -o kompose
+chmod +x kompose
+sudo mv ./kompose /usr/local/bin/kompose
+</code></pre>
+<h5 id="转换"><a href="#转换" class="headerlink" title="转换"></a>转换</h5><pre><code class="shell">kompose -f docker-compose.yml convert
+</code></pre>
+]]></content>
+      <categories>
+        <category>云计算</category>
+      </categories>
+      <tags>
+        <tag>云计算</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>云计算-容器云笔记二（CICD集成）</title>
+    <url>/2021/05/12/cloudcomping-container-2/</url>
+    <content><![CDATA[<h2 id="【题目-1】安装Jenkins-环境"><a href="#【题目-1】安装Jenkins-环境" class="headerlink" title="【题目 1】安装Jenkins 环境"></a>【题目 1】安装Jenkins 环境</h2><blockquote>
+<p>在master 节点上使用镜像jenkins/jenkins:2.262-centos 部署<br>Jenkins 服务，具体要求如下：<br>（1）容器名称：jenkins；<br>（2）端口映射：8080:80； [题目错误 改为8080:8080]<br>（3）使用root 身份生成容器；<br>（4）离线安装Jenkins 插件；<br>（5）设置Jenkins 用户：chinaskill；密码：000000；<br>（6）配置权限“任何用户可以做任何事(没有任何限制)”。<br>使用chinaskill 用户登录Jenkins</p>
+</blockquote>
+<h3 id="1-3"><a href="#1-3" class="headerlink" title="1-3"></a>1-3</h3><pre><code class="shell">docker run -d --name jenkins -p 8080:8080 -u root -v /home/jenkins_home:/var/jenkins_home -v /var/run/docker.sock:/var/run/docker.sock  -v /usr/bin/docker:/usr/bin/docker  -v /usr/bin/kubectl:/usr/local/bin/kubectl   -v /root/.kube:/root/.kube --restart always jenkins/jenkins:2.262-centos
+</code></pre>
+<h3 id="4-离线安装Jenkins-插件"><a href="#4-离线安装Jenkins-插件" class="headerlink" title="4.离线安装Jenkins 插件"></a>4.离线安装Jenkins 插件</h3><pre><code class="shell">cp -rfv /opt/plugins/* /home/jenkins_home/plugins/
+docker restart jenkins
+</code></pre>
+<h3 id="5-设置Jenkins-用户：chinaskill；密码：000000"><a href="#5-设置Jenkins-用户：chinaskill；密码：000000" class="headerlink" title="5.设置Jenkins 用户：chinaskill；密码：000000"></a>5.设置Jenkins 用户：chinaskill；密码：000000</h3><pre><code class="shell">系统设置 --&gt; 用户管理 --&gt; 新建用户 --&gt; 用户：chinaskill，密码：000000，邮箱随意 --&gt;新建用户
+</code></pre>
+<h3 id="6-配置权限“任何用户可以做任何事-没有任何限制-”"><a href="#6-配置权限“任何用户可以做任何事-没有任何限制-”" class="headerlink" title="6.配置权限“任何用户可以做任何事(没有任何限制)”"></a>6.配置权限“任何用户可以做任何事(没有任何限制)”</h3><pre><code class="shell">系统设置 --&gt; 全局安全配置 --&gt; 授权策略 选择 任何用户可以做任何事(没有任何限制) --&gt; 保存
+</code></pre>
+<h3 id="7-使用chinaskill-用户登录Jenkins"><a href="#7-使用chinaskill-用户登录Jenkins" class="headerlink" title="7.使用chinaskill 用户登录Jenkins"></a>7.使用chinaskill 用户登录Jenkins</h3><pre><code class="shell">注销 --&gt; 登录 --&gt; 用户名：chinaskill  密码：000000 --&gt; 登录
+</code></pre>
+<h2 id="【题目2】安装Gitlab-环境"><a href="#【题目2】安装Gitlab-环境" class="headerlink" title="【题目2】安装Gitlab 环境"></a>【题目2】安装Gitlab 环境</h2><blockquote>
+<p>在master 节点上使用镜像gitlab/gitlab-ce:12.9.2-ce.0 部署<br>Gitlab 服务，具体要求如下：<br>（1）容器名称：mygitlab；<br>（2）端口映射：1022:22、81:80、443:443；<br>（3）重启策略：always；<br>（4）设置Gitlab 用户：root；密码：00000000；<br>（5）新建项目：ChinaskillProject；<br>（6）将/opt/ChinaskillProject 中的代码上传到ChinaskillProject 项目中。</p>
+</blockquote>
+<h3 id="1-3-1"><a href="#1-3-1" class="headerlink" title="1-3"></a>1-3</h3><pre><code class="shell">docker run -d --name mygitlab  -p 1022:22 -p 81:80 -p 443:443  -v /etc/gitlab/config:/etc/gitlab  -v /etc/gitlab/logs:/var/log/gitlab  -v /etc/gitlab/data:/var/opt/gitlab  -restart always gitlab/gitlab-ce:12.9.2-ce.0
+</code></pre>
+<h3 id="4-设置Gitlab-用户：root；密码：00000000；"><a href="#4-设置Gitlab-用户：root；密码：00000000；" class="headerlink" title="4.设置Gitlab 用户：root；密码：00000000；"></a>4.设置Gitlab 用户：root；密码：00000000；</h3><pre><code class="shell">访问ip:81 --&gt; 设置密码为00000000
+</code></pre>
+<h3 id="5-新建项目：ChinaskillProject；"><a href="#5-新建项目：ChinaskillProject；" class="headerlink" title="5.新建项目：ChinaskillProject；"></a>5.新建项目：ChinaskillProject；</h3><pre><code class="shell">New project --&gt; Project name : ChinaskillProject，Visibility Level : Public，勾选Initialize repository with a README --&gt; Create project
+</code></pre>
+<h3 id="6-将-opt-ChinaskillProject-中的代码上传到ChinaskillProject-项目中。"><a href="#6-将-opt-ChinaskillProject-中的代码上传到ChinaskillProject-项目中。" class="headerlink" title="6.将/opt/ChinaskillProject 中的代码上传到ChinaskillProject 项目中。"></a>6.将/opt/ChinaskillProject 中的代码上传到ChinaskillProject 项目中。</h3><pre><code class="shell">yum install git -y
+cd /root
+git clone git@192.168.200.53:gitlab/ChinaskillProject.git
+cp -f /opt/ChinaskillProject/* /root/ChinaskillProject/
+git add .
+git commit -a -m &quot;ChinaskillProject&quot;  #-a 参数设置修改文件后不需要执行 git add 命令，直接来提交
+git push
+</code></pre>
+<h2 id="【题目3】配置Jenkins-连接Gitlab"><a href="#【题目3】配置Jenkins-连接Gitlab" class="headerlink" title="【题目3】配置Jenkins 连接Gitlab"></a>【题目3】配置Jenkins 连接Gitlab</h2><blockquote>
+<p>配置Jenkins 连接Gitlab，具体要求如下：<br>（1）设置Outbound requests；<br>（2）生成“Access Tokens”；<br>（3）设置Jenkins 取消对’/project’ end-point 进行身份验证；<br>（4）测试Jenkins 与Gitlab 的连通性。</p>
+</blockquote>
+<h3 id="1-设置Outbound-requests-gitlab操作"><a href="#1-设置Outbound-requests-gitlab操作" class="headerlink" title="1.设置Outbound requests                                   [gitlab操作]"></a>1.设置Outbound requests                                   [gitlab操作]</h3><pre><code class="shell">管理中心(顶部扳手图表) --&gt; 设置  --&gt; 网络 --&gt; 外发请求 ： 勾选允许Webhook和服务对本地网络的请求 --&gt; save changes
+</code></pre>
+<h3 id="2-获取gitlab-token-gitlab操作"><a href="#2-获取gitlab-token-gitlab操作" class="headerlink" title="2.获取gitlab token                                       [gitlab操作]"></a>2.获取gitlab token                                       [gitlab操作]</h3><pre><code class="shell">头像 --&gt; Settings --&gt; Access Tokens --&gt; Name : 命名为jenkins，勾选api --&gt; Create personal access token
+</code></pre>
+<h3 id="3-设置Jenkins取消对’-project’-end-point进行身份验证-Jenkins操作"><a href="#3-设置Jenkins取消对’-project’-end-point进行身份验证-Jenkins操作" class="headerlink" title="3. 设置Jenkins取消对’/project’ end-point进行身份验证        [Jenkins操作]"></a>3. 设置Jenkins取消对’/project’ end-point进行身份验证        [Jenkins操作]</h3><pre><code class="shell">Manage Jenkins --&gt; Configure System --&gt; Gitlab ： 取消勾选Enable authentication for &#39;/project&#39; end-point
+</code></pre>
+<h3 id="4-测试Jenkins-与Gitlab-的连通性-Jenkins操作"><a href="#4-测试Jenkins-与Gitlab-的连通性-Jenkins操作" class="headerlink" title="4. 测试Jenkins 与Gitlab 的连通性                            [Jenkins操作]"></a>4. 测试Jenkins 与Gitlab 的连通性                            [Jenkins操作]</h3><pre><code class="shell">Manage Jenkins --&gt; Configure System --&gt; Gitlab --&gt; Connection name随意 , Gitlab host URL : gitlab地址 --&gt; Credentials --&gt; 添加:Jenkins --&gt; 类型选择 : GitLab API token , API token : 输入上一步获取 --&gt; 添加 --&gt; Test Connection 显示Success则为成功
+</code></pre>
+<h2 id="【题目4】配置Jenkins-连接maven"><a href="#【题目4】配置Jenkins-连接maven" class="headerlink" title="【题目4】配置Jenkins 连接maven"></a>【题目4】配置Jenkins 连接maven</h2><blockquote>
+<p>配置Jenkins 连接maven，具体要求如下：<br>（1）采用docker in docker 的方式在Jenkins 内安装maven；<br>（2）在Jenkins 中配置maven 信息。</p>
+</blockquote>
+<h3 id="1-采用docker-in-docker-的方式在Jenkins-内安装maven"><a href="#1-采用docker-in-docker-的方式在Jenkins-内安装maven" class="headerlink" title="1.采用docker in docker 的方式在Jenkins 内安装maven"></a>1.采用docker in docker 的方式在Jenkins 内安装maven</h3><pre><code class="shell">cp -rf /opt/apache-maven-3.6.3-bin.tar.gz /home/jenkins_home/
+docker exec -it jenkins bash
+tar -zxvf /var/jenkins_home/apache-maven-3.6.3-bin.tar.gz -C .
+mv apache-maven-3.6.3/ /usr/local/maven
+vi /etc/profile
+export M2_HOME=/usr/local/maven 
+export PATH=$PATH:$M2_HOME/bin
+
+source /etc/profile
+mvn -v
+</code></pre>
+<h2 id="【题目5】配置CI-CD"><a href="#【题目5】配置CI-CD" class="headerlink" title="【题目5】配置CI/CD"></a>【题目5】配置CI/CD</h2><blockquote>
+<p>配置CI/CD，具体要求如下：<br>（1）新建一个流水线任务ChinaskillProject；<br>（2）编写流水线脚本；<br>（3）配置Webhook；<br>（4）在Harbor 中新建公开项目chinaskillproject。</p>
+</blockquote>
+<h3 id="1-新建一个流水线任务ChinaskillProject-Jenkins操作"><a href="#1-新建一个流水线任务ChinaskillProject-Jenkins操作" class="headerlink" title="1.新建一个流水线任务ChinaskillProject                         [Jenkins操作]"></a>1.新建一个流水线任务ChinaskillProject                         [Jenkins操作]</h3><pre><code class="shell">创建任务 --&gt; 任务名称：ChinaskillProject，选择流水线 --&gt; 构建触发器：Build when a change is pushed to GitLab. http://192.168.34.77:8080/project/ChinaskillProject,   勾选流水线:Pipeline script
+</code></pre>
+<h3 id="2-编写流水线脚本-Jenkins操作"><a href="#2-编写流水线脚本-Jenkins操作" class="headerlink" title="2.编写流水线脚本                                            [Jenkins操作]"></a>2.编写流水线脚本                                            [Jenkins操作]</h3><pre><code class="shell">node&#123;
+    stage(&#39;git clone&#39;)&#123;
+        git branch: &#39;master&#39;, credentialsId: &#39;c8a2e34e-1a8a-4407-9706-fd697d4e6110&#39;, url: &#39;http://192.168.34.77:81/root/ChinaskillProject.git&#39;
+    &#125;
+    stage(&#39;maven build&#39;)&#123;
+        sh &#39;&#39;&#39;/usr/local/maven/bin/mvn package -DskipTests -f /var/jenkins_home/workspace/ChinaskillProject&#39;&#39;&#39;
+    &#125;
+    stage(&#39;image build&#39;)&#123;
+        sh &#39;&#39;&#39;
+              echo $BUILD_ID
+              docker build -t 192.168.34.77/chinaskillproject/gateway:$BUILD_ID -f /var/jenkins_home/workspace/ChinaskillProject/gateway/Dockerfile  /var/jenkins_home/workspace/ChinaskillProject/gateway
+              docker build -t 192.168.34.77/chinaskillproject/config:$BUILD_ID -f /var/jenkins_home/workspace/ChinaskillProject/config/Dockerfile  /var/jenkins_home/workspace/ChinaskillProject/config
+           &#39;&#39;&#39;
+    &#125;
+    stage(&#39;upload registry&#39;)&#123;
+        sh &#39;&#39;&#39;
+              docker login 192.168.34.77 -u=admin -p=Harbor12345
+              docker push 192.168.34.77/chinaskillproject/gateway:$BUILD_ID
+              docker push 192.168.34.77/chinaskillproject/config:$BUILD_ID
+           &#39;&#39;&#39;
+    &#125;
+    stage(&#39;deploy Rancher&#39;)&#123;
+       sh &#39;sed -i &quot;s/sqshq\\/piggymetrics-gateway/192.168.34.77\\/ChinaskillProject\\/gateway:$BUILD_ID/g&quot; /var/jenkins_home/workspace/ChinaskillProject/yaml/deployment/gateway-deployment.yaml&#39;
+       sh &#39;sed -i &quot;s/sqshq\\/piggymetrics-config/192.168.34.77\\/ChinaskillProject\\/config:$BUILD_ID/g&quot; /var/jenkins_home/workspace/ChinaskillProject/yaml/deployment/config-deployment.yaml&#39;
+       sh &#39;kubectl create ns springcloud&#39;
+       sh &#39;kubectl apply -f /var/jenkins_home/workspace/ChinaskillProject/yaml/deployment/gateway-deployment.yaml --kubeconfig=/root/.kube/config&#39;
+       sh &#39;kubectl apply -f /var/jenkins_home/workspace/ChinaskillProject/yaml/deployment/config-deployment.yaml --kubeconfig=/root/.kube/config&#39;
+       sh &#39;kubectl apply -f /var/jenkins_home/workspace/ChinaskillProject/yaml/svc/gateway-svc.yaml --kubeconfig=/root/.kube/config&#39;
+       sh &#39;kubectl apply -f /var/jenkins_home/workspace/ChinaskillProject/yaml/svc/config-svc.yaml --kubeconfig=/root/.kube/config&#39;
+    &#125;
+&#125;
+</code></pre>
+<h3 id="3-配置Webhook-Gitlab操作"><a href="#3-配置Webhook-Gitlab操作" class="headerlink" title="3.配置Webhook                                                    [Gitlab操作]"></a>3.配置Webhook                                                    [Gitlab操作]</h3><pre><code class="shell">ChinaskillProject --&gt; Settings --&gt; Webhooks : URL即上面url，Push events : master --&gt; Add webhook --&gt; Test --&gt; Push events --&gt; 显示Hook executed successfully: HTTP 200 即成功
+</code></pre>
+<h3 id="4-在Harbor-中新建公开项目chinaskillproject-Harbor操作"><a href="#4-在Harbor-中新建公开项目chinaskillproject-Harbor操作" class="headerlink" title="4.在Harbor 中新建公开项目chinaskillproject                         [Harbor操作]"></a>4.在Harbor 中新建公开项目chinaskillproject                         [Harbor操作]</h3><pre><code class="shell">项目 --&gt; +新建项目 --&gt; 项目名称: chinaskillproject，勾选公开
+</code></pre>
+]]></content>
+      <categories>
+        <category>云计算</category>
+      </categories>
+      <tags>
+        <tag>云计算</tag>
+        <tag>cicd</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>云计算-容器云笔记三（k8s运维）</title>
+    <url>/2021/05/12/cloudcomping-container-3/</url>
+    <content><![CDATA[<h2 id="【题目】Pod管理"><a href="#【题目】Pod管理" class="headerlink" title="【题目】Pod管理"></a>【题目】Pod管理</h2><blockquote>
+<p>在master节点/root目录下编写yaml文件nginx.yaml，具体要求如下：<br>（1）Pod名称：nginx-pod；<br>（2）命名空间：default；<br>（3）容器名称：mynginx；<br>（4）镜像：nginx；拉取策略：IfNotPresent；<br>（5）容器端口：80</p>
+</blockquote>
+<pre><code class="shell">kubectl run mynginx --image=nginx:latest --namespace=default --port=80 --dry-run=client -o yaml
+</code></pre>
+<pre><code class="yaml">apiVersion: v1
+kind: Pod
+metadata:
+  creationTimestamp: null
+  labels:
+    run: mynginx
+  name: nginx-pod
+  namespace: default
+spec:
+  containers:
+  - image: nginx:latest
+    name: mynginx
+    imagePullPolicy: ifNotPresent
+    ports:
+    - containerPort: 80
+    resources: &#123;&#125;
+  dnsPolicy: ClusterFirst
+  restartPolicy: Always
+status: &#123;&#125;
+</code></pre>
+<h2 id="【题目】Deployment管理"><a href="#【题目】Deployment管理" class="headerlink" title="【题目】Deployment管理"></a>【题目】Deployment管理</h2><blockquote>
+<p>在master节点/root目录下编写yaml文件nginx-deployment.yaml，具体要求如下：<br>（1）Deployment名称：nginx-deployment；<br>（2）命名空间：default；<br>（3）Pod名称：nginx-deployment，副本数：2；<br>（4）网络：hostNetwork；<br>（5）镜像：nginx；<br>（6）容器端口：80</p>
+</blockquote>
+<pre><code class="shell">kubectl create deploy nginx-deployment --image=nginx:latest --namespace=default --dry-run=client -o yaml
+</code></pre>
+<pre><code class="yaml">apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx-deployment
+  namespace: default
+  labels: 
+    app: nginx-deployment
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: nginx-deployment
+  template:
+    metadata:
+      labels:
+        app: nginx-deployment
+    spec:
+      hostNetwork: true
+      containers:
+      - name: nginx-deployment
+        image: nginx:latest
+        ports:
+        - containerPort: 80
+</code></pre>
+<h2 id="【题目】Namespace管理"><a href="#【题目】Namespace管理" class="headerlink" title="【题目】Namespace管理"></a>【题目】Namespace管理</h2><blockquote>
+<p>在master节点/root目录下编写yaml文件my-namespace.yaml，具体要求如下：<br>（1）Namespace名称：test。</p>
+</blockquote>
+<pre><code class="shell">kubectl create namespace test --dry-run=client -o yaml
+</code></pre>
+<pre><code class="yaml">apiVersion: v1
+kind: Namespace
+metadata:
+  creationTimestamp: null
+  name: test
+spec: &#123;&#125;
+status: &#123;&#125;
+</code></pre>
+<h2 id="【题目】Service管理"><a href="#【题目】Service管理" class="headerlink" title="【题目】Service管理"></a>【题目】Service管理</h2><blockquote>
+<p>在master节点/root目录下编写yaml文件service-clusterip.yaml，具体要求如下：<br>（1）Service名称：service-clusterip；<br>（2）命名空间：default；<br>（3）集群内部访问端口：80；targetPort: 81；<br>（4）Service类型：ClusterIP。</p>
+</blockquote>
+<pre><code class="shell">kubectl create service clusterip service-clusterip --tcp=80:81 --namespace=default --dry-run=client -o yaml
+</code></pre>
+<pre><code class="yaml">apiVersion: v1
+kind: Service
+metadata:
+  creationTimestamp: null
+  labels:
+    app: service-clusterip
+  name: service-clusterip
+  namespace: default
+spec:
+  ports:
+  - name: 80-81
+    port: 80
+    protocol: TCP
+    targetPort: 81
+  selector:
+    app: service-clusterip
+  type: ClusterIP
+status:
+  loadBalancer: &#123;&#125;
+</code></pre>
+<h2 id="【题目】RBAC管理"><a href="#【题目】RBAC管理" class="headerlink" title="【题目】RBAC管理"></a>【题目】RBAC管理</h2><blockquote>
+<p>在master节点/root目录下编写yaml文件role.yaml，具体要求如下：<br>（1）Role名称：pod-reader；<br>（2）命名空间：default；<br>（3）对default命名空间内的Pod拥有get、watch、list的权限。</p>
+</blockquote>
+<pre><code class="shell">kubectl create role pod-reader --verb=get,list,watch --resource=pods --namespace=defaut --dry-run=client -o yaml
+</code></pre>
+<pre><code class="yaml">apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  creationTimestamp: null
+  name: pod-reader
+rules:
+- apiGroups:
+  - &quot;&quot;
+  resources:
+  - pods
+  verbs:
+  - get
+  - list
+  - watch
+</code></pre>
+<h2 id="【题目】CronJob管理"><a href="#【题目】CronJob管理" class="headerlink" title="【题目】CronJob管理"></a>【题目】CronJob管理</h2><pre><code class="shell">kubectl create cronjob hello --image=busybox --schedule=&#39;*/1 * * * *&#39; --dry-run=client -o yaml
+</code></pre>
+<pre><code class="yaml">kind: CronJob
+metadata:
+  name: hello
+spec:
+  schedule: &quot;*/1 * * * *&quot;
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+          - name: hello
+            image: busybox
+            args:
+            - /bin/sh
+            - -c
+            - date; echo Hello from the Kubernetes cluster
+          restartPolicy: OnFailure
+</code></pre>
+<h2 id="【题目】LimitRange管理"><a href="#【题目】LimitRange管理" class="headerlink" title="【题目】LimitRange管理"></a>【题目】LimitRange管理</h2><pre><code class="yaml">apiVersion: v1
+kind: LimitRange
+metadata:
+  name: mem-limit-range
+  namespace: default
+spec:
+  limits:
+  - default:
+      memory: 50Gi
+      cpu: 5
+    defaultRequest:
+      memory: 1Gi
+      cpu: 1
+    type: Container
+</code></pre>
+<h2 id="【题目】ReplicationController管理"><a href="#【题目】ReplicationController管理" class="headerlink" title="【题目】ReplicationController管理"></a>【题目】ReplicationController管理</h2><blockquote>
+<p>在master节点/root目录下编写yaml文件ReplicationController.yaml，具体要求如下：<br>（1）ReplicationController名称：nginx；<br>（2）命名空间：default；<br>（3）副本数：3；<br>（4）镜像：nginx</p>
+</blockquote>
+<pre><code class="yaml">apiVersion: v1
+kind: ReplicationController
+metadata:
+  name: nginx
+  namespace: default
+spec:
+  replicas: 3
+  selector: 
+    app: nginx
+  template:
+    metadata:
+      labels: 
+        app: nginx
+    spec:
+      containers:
+        - name: nginx
+          image: nginx:latest
+</code></pre>
+<h2 id="【题目】健康检查"><a href="#【题目】健康检查" class="headerlink" title="【题目】健康检查"></a>【题目】健康检查</h2><blockquote>
+<p>在master节点/root目录下编写yaml文件liveness_httpget.yaml，具体要求如下：<br>（1）Pod名称：liveness-http；<br>（2）命名空间：default；<br>（3）镜像：nginx；端口：80；<br>（4）容器启动时运行命令“echo Healty &gt; /usr/share/nginx/html/healthz”；<br>（5）httpGet请求的资源路径为/healthz，地址默认为Pod IP，端口使用容器中定义的端口名称HTTP；<br>（6）启动后延时30秒开始运行检测；<br>（7）每隔3秒执行一次liveness probe</p>
+</blockquote>
+<pre><code class="yaml">apiVersion: v1
+kind: Pod
+metadata:
+  name: liveness-http
+  namespace: default
+spec:
+  containers:
+    - name: nginx
+      image: nginx:latest
+      ports:
+        - containerPort: 80
+      args:
+        - /bin/sh
+        - -c
+        - echo Healty &gt; /usr/share/nginx/html/healthz
+      livenessProbe:
+        httpGet:
+          path: /healthz
+          port: http
+        initialDelaySeconds: 30
+        periodSeconds: 3
+</code></pre>
+<h3 id="【题目】PV管理"><a href="#【题目】PV管理" class="headerlink" title="【题目】PV管理"></a>【题目】PV管理</h3><blockquote>
+<p>在 master节点/root目录下编写yml文件px,y0m,具体要求如下:<br>(1)PV名称:pv-local;<br>(2)命名空间: default;<br>(3)回收策略: Delete;<br>(4)访问模式:RWO:<br>(5)挂载路径:node节点/data/k8s/locally;<br>(6)卷容量:5G。</p>
+</blockquote>
+<pre><code class="yaml">apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: pv-local
+  namespace: default
+spec:
+  capacity:
+    storage: 5Gi
+  accessModes:
+  - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Delete
+  nfs:
+    path: /data/k8s
+    server: 127.0.0.1
+</code></pre>
+<h3 id="【题目】HPA管理"><a href="#【题目】HPA管理" class="headerlink" title="【题目】HPA管理"></a>【题目】HPA管理</h3><blockquote>
+<p>在 master节点/root目录下编写yaml文件,具体要求如下:<br>(1)HPA名称: frontend-scaler;<br>(2)命名空间: default;<br>(3)副本数伸缩范围:3-10;<br>(4)期望每个Pod的CPU使用率为50%</p>
+</blockquote>
+<pre><code class="yaml">apiVersion: autoscaling/v1
+kind: HorizontalPodAutoscaler
+metadata: 
+  name: frontend_scaler
+  namespace: default
+spec:
+  maxReplicas: 10
+  minReplicas: 3
+  scaleTargetRef:
+    kind: Deployment
+    name: frontend
+  targetCPUUtilizationPercentage: 50
+</code></pre>
+<h3 id="【题目】-Resource-Quota管理"><a href="#【题目】-Resource-Quota管理" class="headerlink" title="【题目】 Resource Quota管理"></a>【题目】 Resource Quota管理</h3><blockquote>
+<p>创建命名空间 quota-example,在 master节点/root目录下编写yaml，具体要求如下：<br>(1)ResourseQuota名称: compute-resources;<br>(2)命名空间: quota-example;<br>(3)命名空间内所有Pod数量不超过4;<br>(4)命名空间内所有容器内存申请总和不得超过1G;<br>(5)命名空间内所有内存限制不得超过2G;4<br>(6)命名空间内所有容器申请的CPU不得超过1<br>(7)命名空间内所有容器限制的CPU不得超过2。</p>
+</blockquote>
+<pre><code class="yaml">apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: compute-resources
+  namespace: quota-example
+spec:
+  hard:
+    pods: &#39;4&#39;
+    requests.cpu: &#39;1&#39;
+    requests.memory: 1Gi
+    limits.cpu: &#39;2&#39;
+    limits.memory: 2Gi
+</code></pre>
+]]></content>
+      <categories>
+        <category>云计算</category>
+      </categories>
+      <tags>
+        <tag>云计算</tag>
+        <tag>k8s</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>云计算赛项-私有云笔记三（Ansible运维）</title>
+    <url>/2021/05/11/cloudcomping-private-3/</url>
+    <content><![CDATA[<blockquote>
+<p>在/root目录下创建example目录作为Ansible工作目录，部署的入口文件命名为cscc_install.yaml，对其他两台云主机进行安装高可用数据库集群（MariaDB_Galera_cluster，数据库密码设置为123456）的操作</p>
+</blockquote>
+<pre><code class="sh"># 设置免密认证，多节点执行
+yum -y install /opt/python-keyczar-0.71c-2.el7.noarch.rpm  
+yum -y install /opt/sshpass-1.05-5.el7.x86_64.rpm  
+yum -y install ansible 
+
+vi /etc/ansible/hosts 
+[controller]
+192.168.200.72
+[compute]
+192.168.200.92
+
+ssh-keygen
+ssh-copy-id  -i /root/.ssh/id_rsa.pub  192.168.200.72
+ssh-copy-id  -i /root/.ssh/id_rsa.pub  192.168.200.92
+</code></pre>
+<pre><code class="yaml">mkdir example
+vi example/cscc_install.yaml
+---
+  - hosts: all
+    tasks:
+    - name: inatell packages
+      yum:
+        name: &quot;&#123;&#123; packages &#125;&#125;&quot;
+      vars:
+        packages:
+        - mariadb
+        - mariadb-server
+        - galera
+        - net-tools
+    - name: start mariadb
+      service: name=mariadb state=started
+    - name: init mariadb
+      script: mysql_init.sh
+    - name: stop mariadb
+      service: name=mariadb state=stopped
+    - name: use template
+      template:
+        src: mariadb-server.cnf.j2
+        dest: /etc/my.cnf.d/mariadb-server.cnf
+  - hosts: cluster1
+    tasks:
+    - name: start cluster1
+      shell: &quot;nohup /usr/libexec/mysqld --wsrep-new-cluster --user=mysql &amp;&quot;
+      async: 10
+      poll: 0
+    - wait_for: port=4567 state=started
+  - hosts: cluster2
+    tasks:
+    - name: start cluster2
+      service: name=mariadb state=started
+</code></pre>
+<pre><code class="j2">vi mariadb-server.cnf.j2
+[server]
+
+[mysqld]
+datadir=/var/lib/mysql
+socket=/var/lib/mysql/mysql.sock
+log-error=/var/log/mariadb/mariadb.log
+pid-file=/var/run/mariadb/mariadb.pid
+
+[galera]
+wsrep_on=ON                                                     #节点已经开启
+wsrep_provider=/usr/lib64/galera/libgalera_smm.so               #启用galera模块
+wsrep_cluster_address=gcomm://192.168.200.72,192.168.200.92     #指定集群中节点的IP
+binlog_format=row                                               #二进制日志格式必须为行
+default_storage_engine=InnoDB                                   #存储引擎（只支持InnoDB）
+innodb_autoinc_lock_mode=2                                      #总结点数量(视自己情况而定，算上主节点）
+bind-address=0.0.0.0                                            #绑定本机的所有IP
+wsrep_cluster_name=&quot;Mariadb_Galera_Cluster&quot;                     #集群的名字
+wsrep_node_address=&quot;&#123;&#123; ansible_default_ipv4.address &#125;&#125;&quot;         #节点的IP
+wsrep_node_name = &quot;&#123;&#123; ansible_hostname &#125;&#125;&quot;                      #节点的名称
+wsrep_sst_method=rsync                                          #集群使用rsync同步方式
+
+[embedded]
+
+[mariadb]
+
+[mariadb-10.1]
+</code></pre>
+<pre><code class="shell">vi mysql_init.sh
+mysqladmin -uroot password 123456
+mysql -uroot -p123456 -e &#39;grant all privileges on *.* to root@&quot;%&quot; identified by &quot;123456&quot;;&#39;
+mysql -uroot -p123456 -e &#39;flush privileges;&#39;
+</code></pre>
+<pre><code class="shell">验证
+#查看节点数
+show  status like &quot;wsrep_cluster_size&quot;;
+#查看加入的节点ip
+show  global status like &#39;wsrep_incoming_addresses&#39;;
+</code></pre>
+<blockquote>
+<p>创建4台虚拟机，一台ansible母鸡，三台node，解压部署zookeeper和kafka集群高可靠</p>
+</blockquote>
+]]></content>
+      <categories>
+        <category>云计算</category>
+      </categories>
+      <tags>
+        <tag>云计算</tag>
+        <tag>Ansible</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>云计算赛项-私有云笔记二（Python运维）</title>
+    <url>/2021/05/11/cloudcomping-private-2/</url>
+    <content><![CDATA[<blockquote>
+<p>openstack resetfulapi参考文献：<a href="https://docs.openstack.org/api-ref/">https://docs.openstack.org/api-ref/</a></p>
+</blockquote>
+<pre><code class="python"># --*--coding: utf-8 --*--
+import logging
+
+import requests, json, pprint
+
+url = &quot;http://controller&quot;
+
+headers = &#123;&quot;Content-type&quot;: &quot;application/json&quot;&#125;
+
+
+def token():
+    data = &#123;
+        &quot;auth&quot;: &#123;
+            &quot;identity&quot;: &#123;
+                &quot;methods&quot;: [&quot;password&quot;],
+                &quot;password&quot;: &#123;
+                    &quot;user&quot;: &#123;
+                        &quot;domain&quot;: &#123;
+                            &quot;name&quot;: &quot;demo&quot;
+                        &#125;,
+                        &quot;name&quot;: &quot;admin&quot;,
+                        &quot;password&quot;: &quot;000000&quot;
+                    &#125;
+                &#125;
+            &#125;,
+            &quot;scope&quot;: &#123;
+                &quot;project&quot;: &#123;
+                    &quot;domain&quot;: &#123;
+                        &quot;name&quot;: &quot;demo&quot;
+                    &#125;,
+                    &quot;name&quot;: &quot;admin&quot;
+                &#125;
+            &#125;
+        &#125;
+    &#125;
+    response = requests.post(url=f&#39;&#123;url&#125;:5000/v3/auth/tokens&#39;, data=json.dumps(data))
+    headers[&#39;X-Auth-Token&#39;] = response.headers[&#39;X-Subject-Token&#39;]
+
+
+def pprints(func):
+    def print(*args):
+        if not args:
+            pprint.pprint(func())
+        else:
+            pprint.pprint(func(args[0]))
+
+    return print
+
+
+@pprints
+def create_flavor():
+    data = &#123;
+        &quot;flavor&quot;: &#123;
+            &quot;name&quot;: &quot;test&quot;,
+            &quot;id&quot;: 199999,
+            &quot;vcpus&quot;: 1,
+            &quot;ram&quot;: 2048,
+            &quot;disk&quot;: 20,
+        &#125;
+    &#125;
+    return requests.post(url=f&#39;&#123;url&#125;:8774/v2.1/flavors&#39;, data=json.dumps(data), headers=headers).json()
+
+
+@pprints
+def list_flavor():
+    return requests.get(url=f&#39;&#123;url&#125;:8774/v2.1/flavors&#39;, headers=headers).json()
+
+
+@pprints
+def show_flavor(id):
+    return requests.get(url=f&#39;&#123;url&#125;:8774/v2.1/flavors/&#123;id&#125;&#39;, headers=headers).json()
+
+
+def delete_flavor(id):
+    requests.delete(url=f&#39;&#123;url&#125;:8774/v2.1/flavors/&#123;id&#125;&#39;, headers=headers)
+
+
+@pprints
+def create_image():
+    data = &#123;
+        &quot;container_format&quot;: &quot;bare&quot;,
+        &quot;disk_format&quot;: &quot;qcow2&quot;,
+        &quot;name&quot;: &quot;Ubuntu&quot;,
+    &#125;
+    return requests.post(url=f&#39;&#123;url&#125;:9292/v2/images&#39;, data=json.dumps(data), headers=headers).json()
+
+
+@pprints
+def list_image():
+    return requests.get(url=f&#39;&#123;url&#125;:9292/v2/images&#39;, headers=headers).json()
+
+
+@pprints
+def show_image(id):
+    return requests.get(url=f&#39;&#123;url&#125;:9292/v2/images/&#123;id&#125;&#39;, headers=headers).json()
+
+
+def upload_image(id):
+    headers[&quot;Content-Type&quot;] = &quot;application/octet-stream&quot;
+    openBi = &#123;&quot;file&quot;: (&quot;cirros-0.5.2-x86_64-disk.img&quot;, open(r&quot;d:/ISO/cirros-0.5.2-x86_64-disk.img&quot;, &quot;rb&quot;))&#125;
+    res = requests.put(url=f&#39;&#123;url&#125;:9292/v2/images/&#123;id&#125;/file&#39;, files=openBi, headers=headers)
+    print(res.text)
+
+
+def delete_image(id):
+    requests.delete(url=f&#39;&#123;url&#125;:9292/v2/images/&#123;id&#125;&#39;, headers=headers)
+
+
+@pprints
+def create_network():
+    data = &#123;
+        &quot;network&quot;: &#123;
+            &quot;admin_state_up&quot;: True,
+            &quot;name&quot;: &quot;net1&quot;,
+            &quot;provider:network_type&quot;: &quot;vlan&quot;,
+            &quot;provider:physical_network&quot;: &quot;provider&quot;,
+            &quot;provider:segmentation_id&quot;: 150,
+            &quot;router:external&quot;: True,
+            &quot;shared&quot;: True,
+        &#125;
+    &#125;
+    return requests.post(url=f&#39;&#123;url&#125;:9696/v2.0/networks&#39;, data=json.dumps(data), headers=headers).json()
+
+
+@pprints
+def list_network():
+    return requests.get(url=f&#39;&#123;url&#125;:9696/v2.0/networks&#39;, headers=headers).json()
+
+
+@pprints
+def show_network(id):
+    return requests.get(url=f&#39;&#123;url&#125;:9696/v2.0/networks/&#123;id&#125;&#39;, headers=headers).json()
+
+
+def delete_network(id):
+    requests.delete(url=f&#39;&#123;url&#125;:9696/v2.0/networks/&#123;id&#125;&#39;, headers=headers)
+
+
+@pprints
+def create_subnet():
+    data = &#123;
+        &quot;subnet&quot;: &#123;
+            &quot;name&quot;: &quot;net1-sub&quot;,
+            &quot;network_id&quot;: &quot;eb7bb77b-e34f-47da-9afd-20a7972d1539&quot;,
+            &quot;ip_version&quot;: 4,
+            &quot;cidr&quot;: &quot;192.168.199.0/24&quot;,
+            &quot;gateway_ip&quot;: &quot;192.168.199.1&quot;,
+            &quot;allocation_pools&quot;: [
+                &#123;
+                    &quot;start&quot;: &quot;192.168.199.2&quot;,
+                    &quot;end&quot;: &quot;192.168.199.254&quot;
+                &#125;
+            ],
+        &#125;
+    &#125;
+    return requests.post(url=f&#39;&#123;url&#125;:9696/v2.0/subnets/&#39;, data=json.dumps(data), headers=headers).json()
+
+
+@pprints
+def list_subnet():
+    return requests.get(url=f&#39;&#123;url&#125;:9696/v2.0/subnets&#39;, headers=headers).json()
+
+
+@pprints
+def show_subnet(id):
+    return requests.get(url=f&#39;&#123;url&#125;:9696/v2.0/subnets/&#123;id&#125;&#39;, headers=headers).json()
+
+
+def delete_subnet(id):
+    requests.delete(url=f&#39;&#123;url&#125;:9696/v2.0/subnets/&#123;id&#125;&#39;, headers=headers)
+
+
+@pprints
+def create_router():
+    data = &#123;
+        &quot;router&quot;: &#123;
+            &quot;name&quot;: &quot;router1&quot;,
+            &quot;external_gateway_info&quot;: &#123;
+                &quot;network_id&quot;: &quot;0f98a0d0-76d9-4926-8371-09160624b1b2&quot;,
+            &#125;,
+            &quot;admin_state_up&quot;: True
+        &#125;
+    &#125;
+    return requests.post(url=f&#39;&#123;url&#125;:9696/v2.0/routers&#39;, data=json.dumps(data), headers=headers).json()
+
+
+@pprints
+def list_router():
+    return requests.get(url=f&#39;&#123;url&#125;:9696/v2.0/routers&#39;, headers=headers).json()
+
+
+@pprints
+def show_router(id):
+    return requests.get(url=f&#39;&#123;url&#125;:9696/v2.0/routers/&#123;id&#125;&#39;, headers=headers).json()
+
+
+def delete_router(id):
+    print(requests.delete(url=f&#39;&#123;url&#125;:9696/v2.0/routers/&#123;id&#125;&#39;, headers=headers).text)
+
+
+@pprints
+def add_router_interface(id):
+    data = &#123;
+        &quot;subnet_id&quot;: &quot;64e6b323-14ca-4158-911f-c237fd660cc4&quot;
+    &#125;
+    return requests.put(url=f&#39;&#123;url&#125;:9696/v2.0/routers/&#123;id&#125;/add_router_interface&#39;, headers=headers,
+                        data=json.dumps(data)).json()
+
+
+@pprints
+def remove_router_interface(id):
+    data = &#123;
+        &quot;subnet_id&quot;: &quot;64e6b323-14ca-4158-911f-c237fd660cc4&quot;
+    &#125;
+    return requests.put(url=f&#39;&#123;url&#125;:9696/v2.0/routers/&#123;id&#125;/remove_router_interface&#39;, headers=headers,
+                        data=json.dumps(data)).json()
+
+
+@pprints
+def create_server():
+    data = &#123;
+        &quot;server&quot;: &#123;
+            &quot;name&quot;: &quot;device-tagging-server&quot;,
+            &quot;flavorRef&quot;: &quot;dc117c15-fd9f-4763-93ab-32909d32ad41&quot;,
+            &quot;imageRef&quot;: &quot;0cec09e8-ac18-42b5-a2ce-356c49c19326&quot;,
+            &quot;networks&quot;: [&#123;
+                &quot;uuid&quot;: &quot;0f98a0d0-76d9-4926-8371-09160624b1b2&quot;,
+            &#125;],
+        &#125;
+    &#125;
+    return requests.post(url=f&#39;&#123;url&#125;:8774/v2.1/servers&#39;, data=json.dumps(data), headers=headers).json()
+
+
+@pprints
+def list_server():
+    return requests.get(url=f&#39;&#123;url&#125;:8774/v2.1/servers&#39;, headers=headers).json()
+
+
+@pprints
+def show_server(id):
+    return requests.get(url=f&#39;&#123;url&#125;:8774/v2.1/servers/&#123;id&#125;&#39;, headers=headers).json()
+
+
+def delete_server(id):
+    requests.delete(url=f&#39;&#123;url&#125;:8774/v2.1/servers/&#123;id&#125;&#39;, headers=headers)
+
+
+if __name__ == &quot;__main__&quot;:
+    token()
+    # create_flavor()
+    list_flavor()
+    # show_flavor(&#39;dc117c15-fd9f-4763-93ab-32909d32ad41&#39;)
+    # delete_flavor(&#39;6c7b3dfe-b1a5-4751-9623-2bf782eb5ef2&#39;)
+
+    # create_image()
+    # upload_image(&#39;5b458f33-892a-42c2-b546-aa2f6cd1d8a3&#39;)
+    # list_image()
+    # show_image(&#39;8050654d-14a0-46ba-8921-08d902476ac5&#39;)
+    # delete_image(&#39;8050654d-14a0-46ba-8921-08d902476ac5&#39;)
+
+    # create_network()
+    # show_network(&#39;0f98a0d0-76d9-4926-8371-09160624b1b2&#39;)
+    # delete_network(&#39;d07f94f4-4cbe-4b4e-9135-b48fafd540f2&#39;)
+
+    # create_subnet()
+    # list_subnet()
+    # show_subnet(&#39;4a572b3e-3a6d-4de7-b4e9-4f787e104225&#39;)
+    # delete_subnet(&#39;4a572b3e-3a6d-4de7-b4e9-4f787e104225&#39;)
+
+    # create_router()
+    # list_router()
+    # show_router(&#39;b5e52ee8-9850-46aa-8934-f9f1222659a6&#39;)
+    # delete_router(&#39;b5e52ee8-9850-46aa-8934-f9f1222659a6&#39;)
+    # add_router_interface(&#39;b5e52ee8-9850-46aa-8934-f9f1222659a6&#39;)
+    # remove_router_interface(&#39;b5e52ee8-9850-46aa-8934-f9f1222659a6&#39;)
+
+    # create_server()
+    # list_server()
+    # show_server(&#39;14d99a63-cbf1-4d4d-9a91-e356e042fbec&#39;)
+    # delete_server(&#39;14d99a63-cbf1-4d4d-9a91-e356e042fbec&#39;)
+</code></pre>
+]]></content>
+      <categories>
+        <category>云计算</category>
+      </categories>
+      <tags>
+        <tag>云计算</tag>
+        <tag>Python</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>ECS 7天实践训练营</title>
+    <url>/2020/08/06/development-cloudcloud-ecs7day/</url>
+    <content><![CDATA[<h2 id="Class1-打造云笔记"><a href="#Class1-打造云笔记" class="headerlink" title="Class1:打造云笔记"></a>Class1:打造云笔记</h2><h4 id="安装node-js"><a href="#安装node-js" class="headerlink" title="安装node.js"></a>安装node.js</h4><pre><code class="Linux"># 下载Node.js包  
+wget https://npm.taobao.org/mirrors/node/v13.9.0/node-v13.9.0-linux-x64.tar.xz
+# 创建Node.js安装⽬录 
+mkdir -p /usr/local/lib/nodejs
+# 解压 解压到要安装⽬录
+tar -xJvf node-v13.9.0-linux-x64.tar.xz -C /usr/local/lib/nodejs
+# 查看版本号，验证是否安装成功
+cd /usr/local/lib/nodejs/node-v13.9.0-linux-x64/bin
+./node -v
+</code></pre>
+<h4 id="配置环境变量"><a href="#配置环境变量" class="headerlink" title="配置环境变量"></a>配置环境变量</h4><pre><code class="Linux"># 编辑环境变量
+vi ~/.bash_profile
+PATH=$PATH:$HOME/bin:/usr/local/lib/nodejs/node-v13.9.0-linux-x64/bin
+# 重载环境变量
+source ~/.bash_profile
+</code></pre>
+<h4 id="安装VuePress"><a href="#安装VuePress" class="headerlink" title="安装VuePress"></a>安装VuePress</h4><pre><code class="Linux"># 设置淘宝镜像
+npm config set registry https://registry.npm.taobao.org
+# 安装 VuePress
+npm install -g vuepress
+# 创建a安装⽬录
+mkdir vuepress
+cd vuepress
+# 项⽬初始化
+npm init -y
+</code></pre>
+<h4 id="配置VuePress"><a href="#配置VuePress" class="headerlink" title="配置VuePress"></a>配置VuePress</h4><pre><code class="Linux"># 配置相关命令
+vi package.json
+
+&quot;scripts&quot;: &#123;
+ &quot;docs:dev&quot;: &quot;vuepress dev docs&quot;,
+ &quot;docs:build&quot;: &quot;vuepress build docs&quot;
+&#125;,
+
+# 在当前⽬录中创建⼀个⽂档⽬录
+mkdir docs
+# 创建.vuepress⽬录
+cd docs
+mkdir .vuepress
+# 新建⼀个md⽂件
+echo &#39;# Hello VuePress - first blog!&#39; &gt;README.md
+# 创建config.js配置⽂件
+cd .vuepress
+echo &gt;config.js
+# 创建public⽬录
+mkdir public
+</code></pre>
+<h4 id="运行VuePress"><a href="#运行VuePress" class="headerlink" title="运行VuePress"></a>运行VuePress</h4><pre><code class="Linux">#  运⾏服务
+vuepress dev docs
+</code></pre>
+<p>VuePress官方[<a href="https://www.vuepress.cn]">https://www.vuepress.cn]</a></p>
+<h2 id="Class2-搭建wiki知识库"><a href="#Class2-搭建wiki知识库" class="headerlink" title="Class2:搭建wiki知识库"></a>Class2:搭建wiki知识库</h2><h4 id="自动化安装lamp环境"><a href="#自动化安装lamp环境" class="headerlink" title="自动化安装lamp环境"></a>自动化安装lamp环境</h4><pre><code class="Linux"># 安装 wget、git
+yum -y install wget git 
+# git clone 并赋予脚本执行权限
+git clone https://github.com/teddysun/lamp.git
+cd lamp
+chmod 755 *.sh
+# 使用自动模式安装
+~/lamp/lamp.sh -h
+# 安装 Apache、Mysql5.6、PHP-7.1、phpMyAdmin
+~/lamp/lamp.sh --apache_option 1 --db_option 1 --php_option 3 --db_manage_modules phpmyadmin
+</code></pre>
+<h4 id="启动服务"><a href="#启动服务" class="headerlink" title="启动服务"></a>启动服务</h4><pre><code class="Linux"># 启动Apache
+/etc/init.d/httpd start
+</code></pre>
+<h4 id="上传源码"><a href="#上传源码" class="headerlink" title="上传源码"></a>上传源码</h4><pre><code class="Linux"># 将 /data/www/default 目录下东西全面移动到新目录
+cd /data/www/default
+mkdir ord
+mv * ord
+# 下载源码包
+wget https://releases.wikimedia.org/mediawiki/1.29/mediawiki-1.29.1.tar.gz
+# 解压安装包
+tar -zxvf mediawiki-1.29.1.tar.gz 
+# 将文件移动到网站根目录
+mv /mediawiki-1.29.1/* .
+</code></pre>
+<h4 id="安装"><a href="#安装" class="headerlink" title="安装"></a>安装</h4><p>访问公网ip<br><img src="https://i.loli.net/2020/08/07/GjISNpVLYBMlqW3.png" alt="image.png"></p>
+<p>一路next<br><img src="https://i.loli.net/2020/08/07/UWIEzaNpGM2TDrd.png" alt="image.png"></p>
+<p>如出现以下错误<br><img src="https://i.loli.net/2020/08/07/oBr3yVPQkxh9Zpn.png" alt="image.png"></p>
+<p>解决方法</p>
+<pre><code># 给予文件权限
+cd /data
+chmod 777 www
+</code></pre>
+<p>配置相关信息<br><img src="https://i.loli.net/2020/08/07/RBWlyXOFh4vtjcr.png" alt="image.png"><br>一路next<br><img src="https://i.loli.net/2020/08/07/PQS2KLi6rXxRkJb.png" alt="image.png"></p>
+<pre><code class="Linux"># 进入相应文件目录
+cd /data/www/default
+# 下载文件[路径为刚才显示的地址]
+wget http://192.168.37.128/mediawiki-1.29.1/mw-config/index.php?localsettings=1
+# 重命名[具体下载的什么文件名，自行查看]
+ mv index.php\?localsettings\=1 LocalSettings.php
+</code></pre>
+<p><img src="https://i.loli.net/2020/08/07/oizdEUwBkZ6phKu.png" alt="image.png"></p>
+<h2 id="Class3：基于ECS构建微信公众号管理系统"><a href="#Class3：基于ECS构建微信公众号管理系统" class="headerlink" title="Class3：基于ECS构建微信公众号管理系统"></a>Class3：基于ECS构建微信公众号管理系统</h2><p>LAMP环境就不重新搭建了</p>
+<h4 id="启动服务-1"><a href="#启动服务-1" class="headerlink" title="启动服务"></a>启动服务</h4><pre><code class="Linux"># 在之前开启Apache基础上再一个启动Mysql服务
+/etc/init.d/mysqld start
+</code></pre>
+<h4 id="上传源码-1"><a href="#上传源码-1" class="headerlink" title="上传源码"></a>上传源码</h4><pre><code class="Linux"># 进入相应文件目录
+cd /data/www/default
+# 下载源码包
+wget http://www.we7.cc/download/WeEngine-Laster-Offline.zip?spm=5176.10731542.0.0.7b6a38500TZ7q0&amp;file=WeEngine-Laster-Offline.zip
+# 不过我没下载成功这个包 所以我用的官方微擎
+https://cdn.w7.cc/download/WeEngine-Laster-Online.zip
+# 下载unzip库
+yum install unzip
+# 解压源码包
+unzip WeEngine-Laster-Offline.zip
+</code></pre>
+<h4 id="创建数据库"><a href="#创建数据库" class="headerlink" title="创建数据库"></a>创建数据库</h4><pre><code class="Linux"># 进入mysql
+mysql -uroot -p
+# 输入密码 
+LAMP环境数据库密码默认为lamp.sh
+# 执行命令
+CREATE DATABASE 数据库名;
+GRANT SELECT,INSERT,UPDATE,DELETE,CREATE,DROP,ALTER ON 数据库名.* TO 数据库名@localhost IDENTIFIED BY &#39;密码&#39;;
+SET PASSWORD FOR
+</code></pre>
+<h4 id="安装源码"><a href="#安装源码" class="headerlink" title="安装源码"></a>安装源码</h4><p>访问公网ip/install.php[一定要公网ip，不然后面检测通过不了]<br><img src="https://i.loli.net/2020/08/07/pxm5X3fqDFhjTYB.png" alt="image.png"></p>
+<p>一路next</p>
+<h4 id="配置公众号"><a href="#配置公众号" class="headerlink" title="配置公众号"></a>配置公众号</h4><p><img src="https://i.loli.net/2020/08/07/BrQxijJaGyXNITR.png" alt="image.png"><br><img src="https://i.loli.net/2020/08/07/2hEwl7dmWHR8rp6.png" alt="image.png"><br><img src="https://i.loli.net/2020/08/07/uA4TiIJrYsO1pvS.png" alt="image.png"><br><img src="https://i.loli.net/2020/08/07/Ox6XLHtNn8lMufy.png" alt="image.png"><br><img src="https://i.loli.net/2020/08/07/ACWSsvf4R6trdND.png" alt="image.png"></p>
+<h4 id="配置插件"><a href="#配置插件" class="headerlink" title="配置插件"></a>配置插件</h4><p>随便安装了一个插件<br><img src="https://i.loli.net/2020/08/07/cUEwlSj7OIT2hxA.png" alt="image.png"><br>简单配置下<br><img src="https://i.loli.net/2020/08/07/t6YpEXBwr7On1fL.png" alt="image.png"></p>
+<h2 id="Class4-打造离线下载服务器"><a href="#Class4-打造离线下载服务器" class="headerlink" title="Class4:打造离线下载服务器"></a>Class4:打造离线下载服务器</h2><p>一键安装脚本（使用root用户）</p>
+<pre><code class="Linux">#海外
+bash &lt;(curl -Lsk https://raw.githubusercontent.com/helloxz/ccaa/master/ccaa.sh)
+#国内
+bash &lt;(curl -Lsk https://raw.githubusercontent.com/helloxz/ccaa/master/ccaa.sh) cdn
+</code></pre>
+<p>如遇以上如执行无反应，使用以下解决办法</p>
+<pre><code class="Linux"># 安装wget unzip curl
+yum -y install wget unzip curl
+# 下载脚本包
+wget https://github.com/helloxz/ccaa/archive/master.zip
+# 执行脚本
+unzip master.zip &amp;&amp; cd ccaa-master &amp;&amp; sh ccaa.sh
+</code></pre>
+<h4 id="安装CCAA"><a href="#安装CCAA" class="headerlink" title="安装CCAA"></a>安装CCAA</h4><p><code># 输入1安装CCAA</code><br><img src="https://i.loli.net/2020/08/07/S4mpIvTAnNJahGr.png" alt="image.png"><br><code># 根据提示设置下载路径、RPC密钥</code><br><img src="https://i.loli.net/2020/08/07/SwhmpiYgsRBQ8O6.png" alt="image.png"><br><code># 安装完成后会看到如下提示，请务必牢记RPC密钥、用户名、密码等信息</code><br><img src="https://i.loli.net/2020/08/07/l36jPkgdtWJo52O.png" alt="image.png"></p>
+<h4 id="登录后台配置RPC"><a href="#登录后台配置RPC" class="headerlink" title="登录后台配置RPC"></a>登录后台配置RPC</h4><p><img src="https://i.loli.net/2020/08/07/BWbOAV5pmn2vM97.png" alt="image.png"></p>
+<h4 id="使用"><a href="#使用" class="headerlink" title="使用"></a>使用</h4><p><img src="https://i.loli.net/2020/08/07/Ia1LfEW5vRbdXty.png" alt="image.png"></p>
+<h4 id="常用命令"><a href="#常用命令" class="headerlink" title="常用命令"></a>常用命令</h4><pre><code class="Linux">#查看ccaa状态
+ccaa status
+#启动ccaa
+ccaa start
+#停止ccaa
+ccaa stop
+#重启ccaa
+ccaa restart
+</code></pre>
+<h2 id="Class5-基于ECS搭建Java-Web开发环境"><a href="#Class5-基于ECS搭建Java-Web开发环境" class="headerlink" title="Class5:基于ECS搭建Java Web开发环境"></a>Class5:基于ECS搭建Java Web开发环境</h2><h4 id="安装JDK"><a href="#安装JDK" class="headerlink" title="安装JDK"></a>安装JDK</h4><pre><code class="Linux"># 查看yum源中JDK版本
+yum list java*
+# 安装JDK1.8
+yum -y install java-1.8.0-openjdk*
+# 查看是否安装成功
+java -version
+</code></pre>
+<h4 id="安装MySQL数据库"><a href="#安装MySQL数据库" class="headerlink" title="安装MySQL数据库"></a>安装MySQL数据库</h4><pre><code class="LIinux"># 下载并安装MySQL官方的Yum Repository
+wget http://dev.mysql.com/get/mysql57-community-release-el7-10.noarch.rpm
+yum -y install mysql57-community-release-el7-10.noarch.rpm
+yum -y install mysql-community-server
+# 启动 MySQL 数据库
+systemctl start mysqld
+# 查看MySQL初始密码。
+grep &quot;password&quot; /var/log/mysqld.log
+# 登录数据库。
+mysql -uroot -p
+# 修改MySQL默认密码。
+set global validate_password_policy=0;  #修改密码安全策略为低（只校验密码长度，至少8位）。
+ALTER USER &#39;root&#39;@&#39;localhost&#39; IDENTIFIED BY &#39;12345678&#39;;
+# 授予数据库root用户远程管理权限
+GRANT ALL PRIVILEGES ON *.* TO &#39;root&#39;@&#39;%&#39; IDENTIFIED BY &#39;12345678&#39;;
+# 退出数据库
+exit
+</code></pre>
+<h4 id="安装Tomcat"><a href="#安装Tomcat" class="headerlink" title="安装Tomcat"></a>安装Tomcat</h4><pre><code class="Linux"># 下载Tomcat压缩包
+wget https://mirror.bit.edu.cn/apache/tomcat/tomcat-8/v8.5.57/bin/apache-tomcat-8.5.57.tar.gz
+# 解压Tomcat压缩包。
+tar -zxvf apache-tomcat-8.5.57.tar.gz 
+# 修改Tomcat名字
+mv apache-tomcat-8.5.57 /usr/local/Tomcat8.5
+# 为Tomcat授权权限
+chmod +x /usr/local/Tomcat8.5/bin/*.sh
+# 修改Tomcat默认端口号为80（默认端口号为8080）
+sed -i &#39;s/Connector port=&quot;8080&quot;/Connector port=&quot;80&quot;/&#39; /usr/local/Tomcat8.5/conf/server.xml
+# 启动Tomcat
+/usr/local/Tomcat8.5/bin/./startup.sh
+</code></pre>
+<h4 id="访问公网ip"><a href="#访问公网ip" class="headerlink" title="访问公网ip"></a>访问公网ip</h4><p><img src="https://i.loli.net/2020/08/07/oIOFbcjCay8kvJN.png" alt="image.png"></p>
+<h2 id="Class7：在线编程挑战"><a href="#Class7：在线编程挑战" class="headerlink" title="Class7：在线编程挑战"></a>Class7：在线编程挑战</h2>]]></content>
+      <categories>
+        <category>云开发</category>
+      </categories>
+      <tags>
+        <tag>云开发</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>云开发7天训练营学习</title>
+    <url>/2020/08/05/development-cloudcloud-dev/</url>
+    <content><![CDATA[<h3 id="云开发7天训练营学习计划"><a href="#云开发7天训练营学习计划" class="headerlink" title="云开发7天训练营学习计划"></a>云开发7天训练营学习计划</h3><ol>
+<li>认识Serverless云开发 (8.3) ：学习云开发平台的基本概念和操作、团队协同、应用的开发、部署。</li>
+<li>云函数 (8.4) ：函数的基础概念，架构，调用方式、静态文件的托管方式</li>
+<li>开发Web接口 (8.5)：学习使用函数开发 Web 接口、多个函数的同时开发，资源复用</li>
+<li>服务端渲染(8.6)：学习使用函数接入传统 koa 中间件，构建 Web 应用</li>
+<li>数据库调用 (8.7)：学习接入数据库，调用数据存储</li>
+<li>多媒体托管和支付 (8.10)：学习函数的文件多媒体托管和支持能力</li>
+<li>一体化方案开发实战(8.11)：学习和前端(react/vue)代码一起开发的一体化方案</li>
+</ol>
+<h3 id="记录每天作业打卡"><a href="#记录每天作业打卡" class="headerlink" title="记录每天作业打卡"></a>记录每天作业打卡</h3><h4 id="Day-1"><a href="#Day-1" class="headerlink" title="Day 1"></a>Day 1</h4><p>Step1:创建企业团队和选择合适团队人数[<a href="https://workbench.aliyun.com]">https://workbench.aliyun.com]</a><br>Step2:创建应用[NodeJS存量应用迁移方案]</p>
+<p><img src="https://i.loli.net/2020/08/04/OrweUb7CjYugin2.png" alt="image.png"><br><img src="https://i.loli.net/2020/08/04/w2k3Ncim48XyWTq.png" alt="image.png"></p>
+<p>Step3:添加成员列表</p>
+<p><img src="https://i.loli.net/2020/08/05/8UvYyWXiEKHIhdJ.png" alt="image.png"></p>
+<p>Step4:添加项目成员</p>
+<p><img src="https://i.loli.net/2020/08/05/WZ7tpCnyx6PdbXc.png" alt="image.png"></p>
+<h4 id="Day-2"><a href="#Day-2" class="headerlink" title="Day 2"></a>Day 2</h4><p><code>#介绍：</code>云函数 基于MidwayJs 开发</p>
+<p><code>#步骤：</code></p>
+<p>Step1:安装自己系统版本的Node.js[<a href="http://nodejs.cn/download]%E5%B9%B6%E9%AA%8C%E8%AF%81node[node">http://nodejs.cn/download]并验证node[node</a> -v]和npm[npm -v]是否安装完成</p>
+<p><img src="https://i.loli.net/2020/08/04/IXgb4TvWS8YnB1C.png" alt="image.png"></p>
+<p>Step2:安装MidwayJs[npm i @midwayjs/faas-cli -g]</p>
+<p><img src="https://i.loli.net/2020/08/04/baOhn2zScrAUEeu.png" alt="image.png"></p>
+<p>Step3:创建项目[f create]</p>
+<p><img src="https://i.loli.net/2020/08/04/iH9XlgzjPGxw6NL.png" alt="image.png"></p>
+<p>Step4:安装依赖[npm install]</p>
+<p><img src="https://i.loli.net/2020/08/04/vTCVHfNhE7WA4Pl.png" alt="image.png"></p>
+<p>Step5:修改源代码</p>
+<p><img src="https://i.loli.net/2020/08/04/scu14GMwotWx2yQ.png" alt="image.png"></p>
+<p>Step6:测试接口[f invoke -f index]</p>
+<p><img src="https://i.loli.net/2020/08/04/lQBPpmFdsZ4kirY.png" alt="image.png"></p>
+<h4 id="Day-3"><a href="#Day-3" class="headerlink" title="Day 3"></a>Day 3</h4><p>Step1:创建一个项目[Midway Serverless 一体化解决方案(For NodeJS10)]</p>
+<p>创建详见Day1</p>
+<p>Step2:安装依赖[npm install]</p>
+<p><img src="https://i.loli.net/2020/08/05/Nf8hLduB7ZwXFsz.png" alt="image.png"></p>
+<p>Step3:修改源代码</p>
+<p><img src="https://i.loli.net/2020/08/05/6FSHGK2dmC3fPgb.png" alt="image.png"></p>
+<p>Step4:运行项目[npm run dev] </p>
+<p><img src="https://i.loli.net/2020/08/05/ovzE1cQ9FhfNSYL.png" alt="image.png"></p>
+<p>Step5：访问域名[npm run dev后给出的域名]</p>
+<p><img src="https://i.loli.net/2020/08/05/5XzEqoxr1ek2Kpw.png" alt="image.png"></p>
+<pre><code>------
+以上是作业打卡，下面纯属娱乐
+------
+</code></pre>
+<p>Step6：开发者激活和添加机器人[<a href="https://open-dev.dingtalk.com]">https://open-dev.dingtalk.com]</a><br>开发者激活[登录，看提示完成就行]</p>
+<p><img src="https://i.loli.net/2020/08/05/AOayH3E4ZB9KLxh.png" alt="image.png"><br>添加机器人</p>
+<p><img src="https://i.loli.net/2020/08/05/ceKgslDYSr5H16n.png" alt="image.png"></p>
+<p>添加服务信息</p>
+<p><img src="https://i.loli.net/2020/08/05/oJj6R1dnEx9zS3L.png" alt="image.png"></p>
+<p>Step7：安装axios依赖[npm i axios -S]</p>
+<p><img src="https://i.loli.net/2020/08/05/3tOmXuRQT6wPBhG.png" alt="image.png"></p>
+<p>Step8：修改源代码[入口函数]</p>
+<p><img src="https://i.loli.net/2020/08/05/HS8WKQ5AlaJyoBE.png" alt="image.png"></p>
+<p>Step9：修改源代码[函数处理,具体怎么处理自由发挥]</p>
+<p><img src="https://i.loli.net/2020/08/05/Uou9XWJCf38FYG5.png" alt="image.png"></p>
+<p>Step10：机器人测试</p>
+<p><img src="https://i.loli.net/2020/08/05/k1YoXwVMOBZpgae.png" alt="image.png"></p>
+<h4 id="Day-4"><a href="#Day-4" class="headerlink" title="Day 4"></a>Day 4</h4><p>Step1:创建一个项目[KOA应用迁移方案]</p>
+<p>创建详见Day1</p>
+<p>Step2: 安装依赖<br>法①和法②只是单纯的渲染模板引擎不一样<br>法①[npm i 和npm i koa-ejs koa-views]<br>法②[npm i 和npm i koa-swig co]<br>Step3: 修改源代码[函数]<br>法①：</p>
+<p><img src="https://i.loli.net/2020/08/06/2lEuV8QnBWHaRtD.png" alt="image.png"><br>法②：</p>
+<p><img src="https://i.loli.net/2020/08/06/xNb2eJhSVi7opcg.png" alt="image.png"></p>
+<p>Step4: 模板编写<br>法①：</p>
+<p><img src="https://i.loli.net/2020/08/06/AE58bBChsVvFj6J.png" alt="image.png"><br>法②：</p>
+<p><img src="https://i.loli.net/2020/08/06/rOh2nZuaKTt4VA3.png" alt="image.png"><br>Step5：运行[node app.js]</p>
+<p><img src="https://i.loli.net/2020/08/06/phNjzbolQWg1mSV.png" alt="image.png"><br><img src="https://i.loli.net/2020/08/06/MYQF2cvufGatlHd.png" alt="image.png"></p>
+<h4 id="Day-5"><a href="#Day-5" class="headerlink" title="Day 5"></a>Day 5</h4><p>Step1:创建一个项目[Midway Serverless OTS数据库示例]</p>
+<p>创建详见Day1</p>
+<p>Step2: 安装依赖[npm i]</p>
+<p><img src="https://i.loli.net/2020/08/07/PySqpWYcgEXVCvB.png" alt="image.png"></p>
+<p>Step3: 创建表格储存</p>
+<p><img src="https://i.loli.net/2020/08/07/kh9ZMDw61i7Uujf.png" alt="image.png"><br><img src="https://i.loli.net/2020/08/07/r3Z28tgi41YRdSD.png" alt="image.png"><br><img src="https://i.loli.net/2020/08/07/Wwrv1pRM5jGuazk.png" alt="image.png"></p>
+<p>Step4: 获取AccessKey[AccessKey ID、AccessKey Secret]<br><img src="https://i.loli.net/2020/08/07/RKSot7uJmwxylqD.png" alt="image.png"></p>
+<p>Step5：修改环境变量</p>
+<p><img src="https://i.loli.net/2020/08/07/O6fwQnjH7hUtkEa.png" alt="image.png"></p>
+<p>Step6：部署</p>
+<p><img src="https://i.loli.net/2020/08/07/r239Ued6zbSQBOj.png" alt="image.png"><br><img src="https://i.loli.net/2020/08/07/KMgkta5iScVO3NI.png" alt="image.png"></p>
+<h4 id="Day-6"><a href="#Day-6" class="headerlink" title="Day 6"></a>Day 6</h4><p>Step1:创建一个项目[Midway Serverless MySQL数据库示例]</p>
+<p>创建详见Day1</p>
+<p>Step2: 安装依赖[npm i]</p>
+<p><img src="https://i.loli.net/2020/08/10/8uB2fg1lVDrQUnJ.png" alt="image.png"></p>
+<p>Step3: 编写入口文件</p>
+<p><img src="https://i.loli.net/2020/08/10/MPAtHYZ7QSLn5R4.png" alt="image.png"></p>
+<p>Step4: 编写一个函数</p>
+<p><img src="https://i.loli.net/2020/08/10/UIdDJkRsbGtZKnu.png" alt="image.png"></p>
+<p>Step5：部署</p>
+<p><img src="https://i.loli.net/2020/08/10/3L1QpfGngAJwok8.png" alt="image.png"><br><img src="https://i.loli.net/2020/08/10/PFWxalRrpbUjdXT.png" alt="image.png"></p>
+<h4 id="Day-7"><a href="#Day-7" class="headerlink" title="Day 7"></a>Day 7</h4><p>详见[<a href="https://www.yuque.com/docs/share/95869af8-ceef-46f2-ba93-c1912716fcf0#]">https://www.yuque.com/docs/share/95869af8-ceef-46f2-ba93-c1912716fcf0?#]</a></p>
+<p>Step1:创建一个项目[Midway Serverless OTS数据库示例]</p>
+<p>创建详见Day1</p>
+<p>Step2: 安装依赖[npm i]</p>
+<p><img src="https://i.loli.net/2020/08/07/PySqpWYcgEXVCvB.png" alt="image.png"></p>
+<p>Step3: 创建表格储存</p>
+<p><img src="https://i.loli.net/2020/08/11/O73ZbMFLDYgGuJw.png" alt="image.png"></p>
+<p>Step4: 修改环境变量</p>
+<p><img src="https://i.loli.net/2020/08/07/O6fwQnjH7hUtkEa.png" alt="image.png"></p>
+<p>Step5: 修改前端源码</p>
+<p><img src="https://i.loli.net/2020/08/11/qJOvazmxlEH9pjc.png" alt="image.png"></p>
+<pre><code class="HTML">&lt;link href=&quot;https://cdn.bootcdn.net/ajax/libs/tailwindcss/1.6.2/tailwind.min.css&quot; rel=&quot;stylesheet&quot;&gt;
+</code></pre>
+<p><img src="https://i.loli.net/2020/08/11/EjS2vCpZBnz3a9t.png" alt="image.png"></p>
+<pre><code class="React">&lt;div className=&quot;min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8&quot;&gt;
+      &lt;div className=&quot;max-w-md w-full&quot;&gt;
+        &lt;div&gt;
+          &lt;img className=&quot;mx-auto h-12 w-auto&quot; src=&quot;https://tailwindui.com/img/logos/workflow-mark-on-white.svg&quot; alt=&quot;Workflow&quot; /&gt;
+          &lt;h2 className=&quot;mt-6 text-center text-3xl leading-9 font-extrabold text-gray-900&quot;&gt;
+            注册或者登录
+            &lt;/h2&gt;
+        &lt;/div&gt;
+        &lt;form className=&quot;mt-8&quot; action=&quot;#&quot; method=&quot;POST&quot;&gt;
+          &lt;input type=&quot;hidden&quot; name=&quot;remember&quot; defaultValue=&quot;true&quot; /&gt;
+          &lt;div className=&quot;rounded-md shadow-sm&quot;&gt;
+            &lt;div&gt;
+              &lt;input
+                onChange=&#123;e =&gt; &#123; setName(e.target.value) &#125;&#125;
+                aria-label=&quot;Email address&quot; name=&quot;email&quot; type=&quot;email&quot; required className=&quot;appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-t-md focus:outline-none focus:shadow-outline-blue focus:border-blue-300 focus:z-10 sm:text-sm sm:leading-5&quot; placeholder=&quot;Email address&quot; /&gt;
+            &lt;/div&gt;
+            &lt;div className=&quot;-mt-px&quot;&gt;
+              &lt;input
+                onChange=&#123;e =&gt; &#123; setPassword(e.target.value) &#125;&#125;
+                aria-label=&quot;Password&quot; name=&quot;password&quot; type=&quot;password&quot; required className=&quot;appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-b-md focus:outline-none focus:shadow-outline-blue focus:border-blue-300 focus:z-10 sm:text-sm sm:leading-5&quot; placeholder=&quot;Password&quot; /&gt;
+            &lt;/div&gt;
+          &lt;/div&gt;
+          &lt;div className=&quot;mt-6&quot;&gt;
+            &lt;button type=&quot;button&quot; onClick=&#123;handleSubmit&#125; className=&quot;group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm leading-5 font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-500 focus:outline-none focus:border-indigo-700 focus:shadow-outline-indigo active:bg-indigo-700 transition duration-150 ease-in-out&quot;&gt;
+              &lt;span className=&quot;absolute left-0 inset-y-0 flex items-center pl-3&quot;&gt;
+              &lt;/span&gt;
+                注册
+              &lt;/button&gt;
+          &lt;/div&gt;
+          &lt;div className=&quot;mt-6&quot;&gt;
+            &lt;button type=&quot;button&quot; onClick=&#123;handleLogin&#125; className=&quot;group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm leading-5 font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-500 focus:outline-none focus:border-indigo-700 focus:shadow-outline-indigo active:bg-indigo-700 transition duration-150 ease-in-out&quot;&gt;
+              &lt;span className=&quot;absolute left-0 inset-y-0 flex items-center pl-3&quot;&gt;
+              &lt;/span&gt;
+                登录
+              &lt;/button&gt;
+          &lt;/div&gt;
+        &lt;/form&gt;
+      &lt;/div&gt;
+    &lt;/div&gt;
+</code></pre>
+<p>Step6：编写入口文件</p>
+<p><img src="https://i.loli.net/2020/08/11/RXarwE1nKSIZfyQ.png" alt="image.png"></p>
+<pre><code class="yml">  register:
+    handler: user.register
+    events:
+      - apigw:
+          path: /api/register
+
+  login:
+    handler: user.login
+    events:
+      - apigw:
+          path: /api/login
+</code></pre>
+<p>Step7：编写对应的后端文件</p>
+<p><img src="https://i.loli.net/2020/08/11/uhnpFiP3dAKCwlt.png" alt="image.png"></p>
+<pre><code class="ts">import &#123; Func, Inject, Provide &#125; from &#39;@midwayjs/decorator&#39;;
+import TableStore from &#39;tablestore&#39;;
+import format from &#39;otswhere/format&#39;;
+@Provide()
+export class TodoService &#123;
+
+  @Inject()
+  ctx;
+
+  @Inject()
+  tb;
+
+  @Func(&#39;user.login&#39;)
+  async login() &#123;
+    const &#123; name, password &#125; = this.ctx.query;
+
+    const params = &#123;
+      tableName: &#39;user&#39;,
+      direction: TableStore.Direction.BACKWARD,
+      inclusiveStartPrimaryKey: [&#123; id: TableStore.INF_MAX &#125;],
+      exclusiveEndPrimaryKey: [&#123; id: TableStore.INF_MIN &#125;]
+    &#125;;
+
+    return new Promise(resolve =&gt; &#123;
+      this.tb.getRange(params, (_, data) =&gt; &#123;
+        const rows = format.rows(data, &#123; email: true &#125;);
+        const userExists = rows.list.findIndex(user =&gt; user.name === name) !== -1
+        if (!userExists) &#123;
+          resolve(&#123;
+            success: false,
+            message: &#39;用户不存在&#39;
+          &#125;)
+          return
+        &#125;
+
+        const user = rows.list.find(user =&gt; user.name === name)
+        console.log(user.password, password)
+        if (user.password !== password) &#123;
+          resolve(&#123;
+            success: false,
+            message: &#39;密码错误&#39;
+          &#125;)
+          return
+        &#125;
+
+        resolve(&#123;
+          success: true,
+          user
+        &#125;);
+      &#125;);
+    &#125;)
+  &#125;
+
+  @Func(&#39;user.register&#39;)
+  async register() &#123;
+    const &#123; name, password &#125; = this.ctx.query;
+    const params = &#123;
+      tableName: &quot;user&quot;,
+      condition: new TableStore.Condition(TableStore.RowExistenceExpectation.IGNORE, null),
+      primaryKey: [
+        &#123; id: `$&#123;Date.now()&#125;-$&#123;Math.random()&#125;` &#125;
+      ],
+      attributeColumns: [
+        &#123; name &#125;,
+        &#123; password &#125;,
+        &#123; status: &#39;1&#39; &#125;
+      ]
+    &#125;;
+    return new Promise(resolve =&gt; &#123;
+      this.tb.putRow(params, async function (err, data) &#123;
+        if (err) &#123;
+          resolve(&#123;
+            success: false,
+            errmsg: err.message
+          &#125;);
+        &#125; else &#123;
+          resolve(&#123;
+            success: true,
+            data
+          &#125;);
+        &#125;
+      &#125;);
+    &#125;);
+  &#125;
+&#125;
+</code></pre>
+<p>Step8：对接前端和API的请求</p>
+<p><img src="https://i.loli.net/2020/08/11/njHTsudEoWpJQ7X.png" alt="image.png"></p>
+<pre><code class="tsx">export default function App() &#123;
+  const [name, setName] = useState(&#39;&#39;)
+  const [password, setPassword] = useState(&#39;&#39;)
+
+  const handleSubmit = () =&gt; &#123;
+    console.log(name, password)
+    fetch(`/api/register?name=$&#123;name&#125;&amp;password=$&#123;password&#125;`)
+      .then(resp =&gt; resp.json())
+      .then(resp =&gt; &#123;
+        console.log(resp)
+        if (resp.success == true) &#123;
+          alert(&#39;注册成功&#39;)
+        &#125;
+      &#125;)
+  &#125;
+
+  const handleLogin = () =&gt; &#123;
+    fetch(`/api/login?name=$&#123;name&#125;&amp;password=$&#123;password&#125;`)
+      .then(resp =&gt; resp.json())
+      .then(resp =&gt; &#123;
+        if (resp.success == true) &#123;
+          alert(`登录成功,提示信息：$&#123;resp.user.name&#125;`)
+        &#125; else &#123;
+          alert(`登陆失败,提示信息：$&#123;resp.message&#125;`)
+        &#125;
+      &#125;)
+  &#125;
+</code></pre>
+<p>Step9：运行[npm run dev] or 部署</p>
+<p><img src="https://i.loli.net/2020/08/11/z2bp3MHCcRfNu8T.png" alt="image.png"><br><img src="https://i.loli.net/2020/08/11/zWI3fx7kHL2RY6d.png" alt="day7-1.png"><br><img src="https://i.loli.net/2020/08/11/EAo18Th42ND5qSO.png" alt="day7-2.png"></p>
+]]></content>
+      <categories>
+        <category>云开发</category>
+      </categories>
+      <tags>
+        <tag>云开发</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>Serverless Web云开发</title>
+    <url>/2020/08/30/development-cloudcloud-serverless-development-stall/</url>
+    <content><![CDATA[<h2 id="地摊宝开发历程"><a href="#地摊宝开发历程" class="headerlink" title="地摊宝开发历程"></a>地摊宝开发历程</h2><p><img src="https://img.alicdn.com/tfs/TB1qnvCOAY2gK0jSZFgXXc5OFXa-2880-700.jpg" alt="image.png"></p>
+<h3 id="项目背景"><a href="#项目背景" class="headerlink" title="项目背景"></a>项目背景</h3><p>由于今年疫情的原因，使得闲职人员多了起来。于是国家出台了法律法规给予支持，“地摊经济”也成为了最大的黑马。地摊经济门槛低，体量大，促就业，国家现在也在大力倡导，推动社会经济发展地摊经济”允许“夜市、地摊”的重现显然是更接近振兴实体经济业态的一种方式。</p>
+<h3 id="方案设计"><a href="#方案设计" class="headerlink" title="方案设计"></a>方案设计</h3><h4 id="目标市场"><a href="#目标市场" class="headerlink" title="目标市场"></a>目标市场</h4><p>闲职人员、摊位出租者</p>
+<h4 id="目标市场的现状"><a href="#目标市场的现状" class="headerlink" title="目标市场的现状"></a>目标市场的现状</h4><p>从3月15日出台新规允许设置临时占道摊点、允许临街店铺越门经营、允许大型商场开展占道促销等以来，截至5月28日，成都市设置临时占道摊点、摊区2230个，允许临时越门经营点位17147个，允许流动商贩经营点20130个，增加就业人数10万人以上，中心城区餐饮店铺复工率超过98%，实现了经济效益和社会效益双丰收。</p>
+<h4 id="项目定位"><a href="#项目定位" class="headerlink" title="项目定位"></a>项目定位</h4><p>地摊、地摊工具、地摊攻略、地摊生活资讯、网红地摊、助力新地摊经济、轻松找地摊，发现周围好摊位、摆地摊找资源，逛地摊淘尖货、拉上好友组队摆地摊、地摊经验交流的一个平台. </p>
+<h4 id="项目介绍"><a href="#项目介绍" class="headerlink" title="项目介绍"></a>项目介绍</h4><p>采用基于地理信息位置，基于网友提供身边可供摆摊的摊位信息收集的系统。网友同时也可对其摊位可信度进行投票，也可进行留言提供人流量，摊位大小，摊税等信息。</p>
+<p><img src="https://ae01.alicdn.com/kf/Ub5f68f99a8fc4b7bae6c98f66ebf685aE.jpg"></p>
+<p><img src="https://ae01.alicdn.com/kf/U5f45f05790924a7d818d76850c5f1459O.jpg"></p>
+<h3 id="项目开发"><a href="#项目开发" class="headerlink" title="项目开发"></a>项目开发</h3><p><img src="https://ae01.alicdn.com/kf/Uc4aaf06aff6e466e8d1bed25098f87e7T.jpg"></p>
+<p><img src="https://ae01.alicdn.com/kf/U7d1021044d40433a9717007eb502c201f.jpg"></p>
+<p><img src="https://ae01.alicdn.com/kf/U9226ed1a4c574491980329e140965681h.jpg"></p>
+<h3 id="踩坑记录"><a href="#踩坑记录" class="headerlink" title="踩坑记录"></a>踩坑记录</h3><blockquote>
+<p>Q：workbench云平台只内置Python环境，无内置pip环境</p>
+<p>A：</p>
+<ol>
+<li>wget <a href="https://bootstrap.pypa.io/get-pip.py">https://bootstrap.pypa.io/get-pip.py</a></li>
+<li>python get-pip.py</li>
+</ol>
+<p>Q：本地开发使用的flask，遇到同时请求会报错，设置threaded，threaded 使用gevet 均无果</p>
+<p>A：使用time.sleep</p>
+<p>Q：workbench云平台pip安装第三方包，打包部署后访问报错找不到该包</p>
+<p>A：必须指定安装包的安装目录为该项目的根目录<code>pip install 包名 --target=路径</code></p>
+<p>Q：Python 对list.append 赋值为None</p>
+<p>A：list.append 无返回值，不能直接赋值</p>
+<p>Q：数据库使用阿里表格数据库tablestore不能直接返回所有数据</p>
+<p>A：最终直接放弃，改用Mysql，并且本地调试的时候余额欠费，好像挺贵的访问</p>
+<p>Q：Vue.js 使用高地地图 ，刚开始使用ip定位和直接定位来获取经纬度 但api只能范围市的范围的经纬度数组，这样会为后续绘制图形带来麻烦精度不够，后来想通过Get ipLocation定位，站点升级https结果还是由于浏览器定位失败</p>
+<p>A：使用百度地图 <code>vue-baidu-map</code>组件</p>
+<p>Q：百度地图绘制图像在pc端没有问题，手机端无法更改，而该项目是针对H5，百度无果</p>
+<p>A：采用csdn上某大佬自己写的方法实现</p>
+</blockquote>
+<h3 id="被攻击记录"><a href="#被攻击记录" class="headerlink" title="被攻击记录"></a>被攻击记录</h3><p>8月30日 早上被阿里电话打醒，说我已经欠费275，我靠，睡一觉一套房子没了？？？</p>
+<p><img src="https://ae01.alicdn.com/kf/U88ecb7f3fa4c47f98bdbed5fd0014112K.jpg"></p>
+<p><img src="https://ae01.alicdn.com/kf/U3c81462ff8f44c01bc1dbf8641afb396f.jpg"></p>
+<p>攻击大概是从29号晚上19：40分持续到30号早上一点左右，峰值请求数达到了14k、17G流量</p>
+<p>原本以为套了CDN（毕竟我还有1T的资源包）不会扣太多，</p>
+<p>结果太天真了，因为api网关是日计费，估摸29号晚上都是cdn在扛，部分流量直接走api网关直接访问了，30号cdn就因欠费停止服务，0-1点时间段就直接打到api网关上，产生了费用。难道我要向老罗去带货？</p>
+<p>@风驰老师让我做API网关设置限流策略和cdn加速文件的缓存时间</p>
+<p>然而目前只能在api网关上做限流[用的默认脚本]，cdn因为欠费无法设置，这这这，非常无奈。这笔款项不知道怎么处理了，本来想跑路的，大不了合伙人称号不要了</p>
+<p>结果朋友@朱永杰 说可能会影响蚂蚁积分，而蚂蚁信用是接入征信系统的，难搞哦。</p>
+<p>现在只能就这样挂着</p>
+<p><img src="https://ae01.alicdn.com/kf/U9efc5cee448448d3a53c332126a75d22r.jpg"></p>
+<ul>
+<li>友情提醒：参加活动有风险</li>
+</ul>
+<h3 id="最终结果"><a href="#最终结果" class="headerlink" title="最终结果"></a>最终结果</h3><blockquote>
+<p>入选训练营，并参加了阿里面试，却一问三不知，要学的东西还很多，加油，冲！！！</p>
+</blockquote>
+]]></content>
+      <categories>
+        <category>云开发</category>
+      </categories>
+      <tags>
+        <tag>云开发</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>Python爬虫-网易云热评Demo</title>
+    <url>/2020/03/09/python-reptile-163music/</url>
+    <content><![CDATA[<h3 id="获取歌曲id-歌名-作者-封面链接-歌曲链接-热评（评论者-评论者头像-评论）"><a href="#获取歌曲id-歌名-作者-封面链接-歌曲链接-热评（评论者-评论者头像-评论）" class="headerlink" title="获取歌曲id 歌名 作者 封面链接 歌曲链接 热评（评论者 评论者头像 评论）"></a>获取歌曲id 歌名 作者 封面链接 歌曲链接 热评（评论者 评论者头像 评论）</h3><pre><code class="Python"># 导入包
+import requests
+import json
+import random
+
+#日更[19723756飙升榜 3779629新歌榜] 周四更[3778678热歌榜 2884035原创榜]
+song_list_id = 3778678
+
+# 构造url,user-agent请求头参数部分
+# get-url
+url = &#39;http://music.163.com/api/playlist/detail&#39;
+# get参数
+argument = &#123;
+    &#39;id&#39;: str(song_list_id)
+&#125;
+# 用户代理池
+uapools = [
+    #Edge Trident内核 on win10
+    &quot;Mozilla/5.0 (Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/64.0.3282.140 Safari/537.36 Edge/17.17134&quot;,
+    #Edge chromium内核 on win10
+    &quot;Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/80.0.3987.106 Safari/537.36 Edg/80.0.361.54&quot;,
+    #Chrome on win10
+    &quot;Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/80.0.3987.106 Safari/537.36&quot;,
+    #Safari on mac
+    &quot;Mozilla/5.0 (Macintosh; U; Intel Mac OS X 10_6_6; en-US) AppleWebKit/533.20.25 (KHTML, like Gecko) Version/5.0.4 Safari/533.20.27&quot;,
+    #FireFox on windows
+    &quot;Mozilla/5.0 (Windows NT 6.2; WOW64; rv:21.0) Gecko/20100101 Firefox/21.0&quot;,
+    #Opera on mac
+    &quot;Opera/9.80 (Macintosh; Intel Mac OS X 10.6.8; U; en) Presto/2.9.168 Version/11.52&quot;
+]
+# User-Agent
+ua = uapools[random.randint(0,len(uapools)-1)]
+print(ua)
+
+# 向指定的url发送get含有参数的请求
+data = requests.post(url,params=argument,headers=&#123;&#39;User-Agent&#39; : ua&#125;)
+# 返回网站对象
+res = data.text
+# json处理
+txt = json.loads(res)
+print(txt[&#39;result&#39;][&#39;tracks&#39;])
+#获取歌曲总数
+song_all = len(txt[&#39;result&#39;][&#39;tracks&#39;])
+#随机生成歌曲id
+rand=random.randint(0,song_all-1)
+print(rand)
+#歌曲id
+song_id = txt[&#39;result&#39;][&#39;tracks&#39;][rand][&#39;id&#39;]
+print(song_id)
+
+# 歌曲基本信息
+def song_basic(rand):
+    #歌曲名
+    song_name = txt[&#39;result&#39;][&#39;tracks&#39;][rand][&#39;name&#39;]
+    print(song_name)
+    #歌曲作者
+    song_author = txt[&#39;result&#39;][&#39;tracks&#39;][rand][&#39;artists&#39;][0][&#39;name&#39;]
+    print(song_author)
+    #歌曲封面
+    song_pic = txt[&#39;result&#39;][&#39;tracks&#39;][rand][&#39;album&#39;][&#39;picUrl&#39;]
+    print(song_pic)
+
+# 歌曲mp3链接
+def song_url(song_id):
+    url = &#39;https://music.163.com/song/media/outer/url?id=&#39;+str(song_id)+&#39;.mp3&#39;
+    print(url)
+
+# 歌曲热评
+def song_hotcomments(song_id):
+    url = &#39;http://music.163.com/api/v1/resource/comments/R_SO_4_&#39;+str(song_id)
+    data = requests.post(url,headers=&#123;&#39;User-Agent&#39; : ua&#125;)
+    html = data.text
+    txt= json.loads(html)
+    comments_all = len(txt[&#39;hotComments&#39;])
+    for i in range(comments_all):
+        nickName =  txt[&#39;hotComments&#39;][i][&#39;user&#39;][&#39;nickname&#39;]
+        avatarUrl =  txt[&#39;hotComments&#39;][i][&#39;user&#39;][&#39;avatarUrl&#39;]
+        comment = txt[&#39;hotComments&#39;][i][&#39;content&#39;]
+        print(i+1,&#39;\n&#39;,nickName,&#39;\n&#39;,avatarUrl,&#39;\n&#39;,comment)
+
+song_basic(rand)
+
+song_url(song_id)
+
+song_hotcomments(song_id)
+</code></pre>
+]]></content>
+      <categories>
+        <category>Python</category>
+      </categories>
+      <tags>
+        <tag>Python爬虫</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>Hello World</title>
+    <url>/2020/02/22/hello-world/</url>
+    <content><![CDATA[<p>Welcome to <a href="https://hexo.io/">Hexo</a>! This is your very first post. Check <a href="https://hexo.io/docs/">documentation</a> for more info. If you get any problems when using Hexo, you can find the answer in <a href="https://hexo.io/docs/troubleshooting.html">troubleshooting</a> or you can ask me on <a href="https://github.com/hexojs/hexo/issues">GitHub</a>.</p>
+<h2 id="Quick-Start"><a href="#Quick-Start" class="headerlink" title="Quick Start"></a>Quick Start</h2><h3 id="Create-a-new-post"><a href="#Create-a-new-post" class="headerlink" title="Create a new post"></a>Create a new post</h3><pre><code class="bash">$ hexo new &quot;My New Post&quot;
+</code></pre>
+<p>More info: <a href="https://hexo.io/docs/writing.html">Writing</a></p>
+<h3 id="Run-server"><a href="#Run-server" class="headerlink" title="Run server"></a>Run server</h3><pre><code class="bash">$ hexo server
+</code></pre>
+<p>More info: <a href="https://hexo.io/docs/server.html">Server</a></p>
+<h3 id="Generate-static-files"><a href="#Generate-static-files" class="headerlink" title="Generate static files"></a>Generate static files</h3><pre><code class="bash">$ hexo generate
+</code></pre>
+<p>More info: <a href="https://hexo.io/docs/generating.html">Generating</a></p>
+<h3 id="Deploy-to-remote-sites"><a href="#Deploy-to-remote-sites" class="headerlink" title="Deploy to remote sites"></a>Deploy to remote sites</h3><pre><code class="bash">$ hexo deploy
+</code></pre>
+<p>More info: <a href="https://hexo.io/docs/one-command-deployment.html">Deployment</a></p>
+]]></content>
+  </entry>
+  <entry>
+    <title>Python爬虫-BeautifulSoup模块</title>
+    <url>/2020/03/29/python-reptile-BeautifulSoup4/</url>
+    <content><![CDATA[<h3 id="安装Requests模块"><a href="#安装Requests模块" class="headerlink" title="安装Requests模块"></a>安装Requests模块</h3><pre><code class="Cmd">pip3 install BeautifulSoup
+</code></pre>
+<h3 id="BeautifulSoup表达式规则"><a href="#BeautifulSoup表达式规则" class="headerlink" title="BeautifulSoup表达式规则"></a>BeautifulSoup表达式规则</h3><table>
+<thead>
+<tr>
+<th>普通字符</th>
+<th>正则匹配</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>&gt;</td>
+<td>逐层提取</td>
+</tr>
+<tr>
+<td>.class</td>
+<td>提取class属性名为class的标签[多个class值可以用.连接]</td>
+</tr>
+<tr>
+<td>#id</td>
+<td>提取id属性名为id的标签</td>
+</tr>
+<tr>
+<td>div</td>
+<td>提取p标签[div]</td>
+</tr>
+<tr>
+<td>[属性名]</td>
+<td>提取含有属性名的标签</td>
+</tr>
+<tr>
+<td>[属性名=属性值]</td>
+<td>提取xxx属性名=xxx属性值的标签</td>
+</tr>
+<tr>
+<td>标签名.属性值</td>
+<td>提取属性为xx的标签</td>
+</tr>
+<tr>
+<td>,</td>
+<td>提取多个不同标签</td>
+</tr>
+<tr>
+<td>text</td>
+<td>提取标签下面的文本</td>
+</tr>
+</tbody></table>
+<h3 id="小案例-匹配新华网主题名称"><a href="#小案例-匹配新华网主题名称" class="headerlink" title="小案例-匹配新华网主题名称"></a>小案例-匹配新华网主题名称</h3><pre><code class="Python"># 导入包
+import requests
+from bs4 import BeautifulSoup
+
+# 构造url,user-agent请求头参数部分
+ua = &#123;
+    &#39;User-Agent&#39; : &#39;Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/80.0.3987.132 Safari/537.36&#39;
+&#125;
+url = &#39;http://www.xinhuanet.com/2020-03/28/c_1125782104.htm&#39;
+
+# 向指定的url发送get含有参数的请求
+response = requests.get(url,headers=ua)
+# 设置字符集
+response.encoding = &#39;utf-8&#39;
+# 返回网站对象
+res = response.text
+
+# 生成选择器对象
+html = BeautifulSoup(res,&quot;html.parser&quot;)
+# 匹配出数组
+title = html.select(&#39;div.h-title&#39;)[0].text
+
+print(title)
+</code></pre>
+]]></content>
+      <categories>
+        <category>Python</category>
+      </categories>
+      <tags>
+        <tag>Python爬虫</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>Python爬虫-反扒技术（构建ip代理池）</title>
+    <url>/2020/03/13/python-reptile-Proxy/</url>
+    <content><![CDATA[<h3 id="爬取快代理获取的一个ip代理池"><a href="#爬取快代理获取的一个ip代理池" class="headerlink" title="爬取快代理获取的一个ip代理池"></a>爬取快代理获取的一个ip代理池</h3><pre><code class="Python">import requests
+import parsel
+import time
+import random
+
+def user_agent():
+    &#39;&#39;&#39;
+    随机一个User-Agent
+    :return: 返回一个User-Agent
+    &#39;&#39;&#39;
+
+    user_agent_pools = [
+        # Edge Trident内核 on win10
+        &#123;&#39;User-Agent&#39;: &#39;Mozilla/5.0 (Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/64.0.3282.140 Safari/537.36 Edge/17.17134&#39;&#125;,
+        # Edge chromium内核 on win10
+        &#123;&#39;User-Agent&#39;: &#39;Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/80.0.3987.106 Safari/537.36 Edg/80.0.361.54&#39;&#125;,
+        # Chrome on win10
+        &#123;&#39;User-Agent&#39;: &#39;Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/80.0.3987.106 Safari/537.36&#39;&#125;,
+        # Safari on mac
+        &#123;&#39;User-Agent&#39;: &#39;Mozilla/5.0 (Macintosh; U; Intel Mac OS X 10_6_6; en-US) AppleWebKit/533.20.25 (KHTML, like Gecko) Version/5.0.4 Safari/533.20.27&#39;&#125;,
+        # FireFox on windows
+        &#123;&#39;User-Agent&#39;: &#39;Mozilla/5.0 (Windows NT 6.2; WOW64; rv:21.0) Gecko/20100101 Firefox/21.0&#39;&#125;,
+        # Opera on mac
+        &#123;&#39;User-Agent&#39;: &#39;Opera/9.80 (Macintosh; Intel Mac OS X 10.6.8; U; en) Presto/2.9.168 Version/11.52&#39;&#125;
+    ]
+    rand_user_agent= random.randint(0,len(user_agent_pools)-1)
+    return user_agent_pools[rand_user_agent]
+
+def check_ip(proxies_list):
+    &#39;&#39;&#39;
+    检测代理ip质量
+    :param proxies_list: 传入一个代理ip列表
+    :return: 高质量代理ip列表
+    &#39;&#39;&#39;
+
+    ip_heightquality = []
+    for proxy in proxies_list:
+        # print(proxy)
+        try:
+            response = requests.get(&#39;https://www.baidu.com&#39;,headers=user_agent(),proxies=proxy,timeout=0.1)
+            if response.status_code == 200:
+                ip_heightquality.append(proxy)
+        except Exception as e:
+             continue
+    return ip_heightquality
+
+def rand_proxy(proxy_list):
+    &#39;&#39;&#39;
+    随机一个高质量代理ip
+    :param proxy_list: 传入高质量代理ip列表
+    :return: 返回一个代理ip
+    &#39;&#39;&#39;
+    rand_proxy = random.randint(0,len(proxy_list)-1)
+    # print(rand_proxy)
+    return proxy_list[rand_proxy]
+
+def response():
+    proxies_list = []
+    # 构建访问页数
+    for page in range(1,2):
+        url = f&#39;https://www.kuaidaili.com/free/inha/&#123;page&#125;/&#39;
+        response = requests.get(url,headers=user_agent())
+        data = response.text
+        # print(response)
+
+        html_data = parsel.Selector(data)
+        # print(html_data)
+        parse_list = html_data.xpath(&#39;//table[@class=&quot;table table-bordered table-striped&quot;]/tbody/tr&#39;)
+        # print(parse_list)
+
+        # 代理ip的形式&#123;&#39;协议类型&#39;：&#39;ip:端口&#39;&#125;
+        for tr in parse_list:
+            proxies_dict = &#123;&#125;
+            http_type = tr.xpath(&#39;./td[4]/text()&#39;).extract_first()
+            ip = tr.xpath(&#39;./td[1]/text()&#39;).extract_first()
+            port = tr.xpath(&#39;./td[2]/text()&#39;).extract_first()
+            # print(http_type,ip,port)
+
+            # 构建字典
+            proxies_dict[http_type] = ip+&quot;:&quot;+port
+            # print(proxies_dict)
+            proxies_list.append(proxies_dict)
+            time.sleep(0.5)
+    return proxies_list
+
+# print(proxies_list,len(proxies_list))
+# proxies_use = check_ip(proxies_list)
+# print(proxies_use,len(proxies_use))
+# print(user_agent())
+# print(check_ip(response()))
+# print(rand_proxy(check_ip(response())))
+
+def proxy():
+    &#39;&#39;&#39;
+    封装代理ip
+    :return: 返回一个代理ip列表
+    &#39;&#39;&#39;
+    return rand_proxy(check_ip(response()))
+
+# print(proxy())
+</code></pre>
+<h3 id="食用方法"><a href="#食用方法" class="headerlink" title="食用方法"></a>食用方法</h3><ol>
+<li><p>将上面文件命名为proxy_pools.py并保存在和需要调用的同一目录</p>
+</li>
+<li><pre><code class="Python">import proxy_pools
+print(proxy_pools.proxy())
+</code></pre>
+</li>
+</ol>
+<p><a href="https://github.com/Hiram-Wong/proxy" title="Github">Github</a></p>
+]]></content>
+      <categories>
+        <category>Python</category>
+      </categories>
+      <tags>
+        <tag>Python反爬</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>Python爬虫-SQLAlchemy模块</title>
+    <url>/2020/04/27/python-reptile-SQLAlchemy/</url>
+    <content><![CDATA[<h3 id="介绍"><a href="#介绍" class="headerlink" title="介绍"></a>介绍</h3><blockquote>
+<p>ORM技术：Object-Relational Mapping，把关系数据库的表结构映射到对象，无需了解原生sql语法。<br>在Python中，最有名的ORM框架是SQLAlchemy,更方便的操作数据库。</p>
+</blockquote>
+<h3 id="安装Requests模块"><a href="#安装Requests模块" class="headerlink" title="安装Requests模块"></a>安装Requests模块</h3><pre><code class="Cmd">pip install sqlalchemy
+</code></pre>
+<h3 id="数据类型"><a href="#数据类型" class="headerlink" title="数据类型"></a>数据类型</h3><table>
+<thead>
+<tr>
+<th>SQLAlchemy数据类型</th>
+<th>对应SQL数据类型</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Integer</td>
+<td>int</td>
+<td>整型</td>
+</tr>
+<tr>
+<td>Float</td>
+<td>float</td>
+<td>浮点类型</td>
+</tr>
+<tr>
+<td>Double</td>
+<td>double</td>
+<td>双精度浮点类型</td>
+</tr>
+<tr>
+<td>String</td>
+<td>varchar</td>
+<td>可变字符类型</td>
+</tr>
+<tr>
+<td>Boolean</td>
+<td>tinyint</td>
+<td>布尔类型</td>
+</tr>
+<tr>
+<td>DECIMAL</td>
+<td>decimal</td>
+<td>定点类型。是专门为了解决浮点类型精度丢失的问题的，第一个参数是用来标记这个字段总能能存储多少个数字，第二个参数表示小数点后有多少位。</td>
+</tr>
+<tr>
+<td>Enum</td>
+<td>enum</td>
+<td>枚举类型</td>
+</tr>
+<tr>
+<td>Date</td>
+<td>date</td>
+<td>存储时间，只能存储年月日</td>
+</tr>
+<tr>
+<td>DateTime</td>
+<td>datetime</td>
+<td>存储时间，可以存储年月日时分秒毫秒等</td>
+</tr>
+<tr>
+<td>Time</td>
+<td>time</td>
+<td>存储时间，可以存储时分秒</td>
+</tr>
+<tr>
+<td>Text</td>
+<td>text</td>
+<td>存储长字符串</td>
+</tr>
+<tr>
+<td>LONGTEXT</td>
+<td>longtext</td>
+<td>长文本类型</td>
+</tr>
+</tbody></table>
+<h3 id="使用方法"><a href="#使用方法" class="headerlink" title="使用方法"></a>使用方法</h3><pre><code class="python"># 导入第三方包:
+from sqlalchemy import Column, String, create_engine
+from sqlalchemy.orm import sessionmaker
+from sqlalchemy.ext.declarative import declarative_base
+
+# 创建对象的基类:
+Base = declarative_base()
+
+# 定义类，并继承Base,多个表创建多个类:
+class User(Base):
+    # 表的名字:
+    __tablename__ = &#39;user&#39;
+
+    # 表的结构，不同类型需导入不同类型包:
+    id = Column(String(length=20), primary_key=True, autoincrement=True)
+    name = Column(String(20),nullable=False)
+    # 一对多:
+    books = relationship(&#39;Book&#39;)
+class Book(Base):
+    __tablename__ = &#39;book&#39;
+
+    id = Column(String(20), primary_key=True)
+    name = Column(String(20))
+    # “多”的一方的book表是通过外键关联到user表的:
+    user_id = Column(String(20), ForeignKey(&#39;user.id&#39;))
+# 初始化数据库连接，[数据库类型+数据库驱动名称://用户名:口令@机器地址:端口号/数据库名]:
+engine = create_engine(&#39;mysql+pymysql://root:password@localhost:3306/test&#39;)
+# 操作数据库，需要我们创建一个session:
+DBSession = sessionmaker(bind=engine)
+# 创建数据表,User类.metadata.create_all(engine)
+User.metadata.create_all(engine)
+
+
+# 数据操作：
+
+# 创建session对象:
+session = DBSession()
+# 创建新User对象:
+new_user = User(id=&#39;5&#39;, name=&#39;Bob&#39;)
+# 添加到session:
+session.add(new_user)
+# 提交即保存到数据库:
+session.commit()
+# 创建Query查询，filter是where条件，最后调用one()返回唯一行，如果调用all()则返回所有行:
+user = session.query(User).filter(User.id==&#39;5&#39;).one()
+# 关闭session:
+session.close()
+</code></pre>
+]]></content>
+      <categories>
+        <category>Python</category>
+      </categories>
+      <tags>
+        <tag>Python爬虫</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>Python爬虫-Pymysql模块</title>
+    <url>/2020/03/09/python-reptile-pymysql/</url>
+    <content><![CDATA[<h3 id="增删改查"><a href="#增删改查" class="headerlink" title="增删改查"></a>增删改查</h3><pre><code class="python">import pymysql
+# 打开数据库连接
+conn = pymysql.connect(&quot;数据库链接&quot;,&quot;数据库用户&quot;,&quot;数据库密码&quot;,&quot;数据库表名&quot;)
+# 使用cursor()方法获取操作游标 
+cur = conn.cursor()
+sql = &quot;sql语句&quot;
+# 使用execute方法执行SQL语句
+cur.execute(sql)
+
+# 增-删-改
+# 提交到数据库执行
+conn.commit()
+
+# 查
+cur.fetchone() #获取一个结果集
+cur.fetchall() #获取所有结果集
+cur.rowcount #返回影响的行数。
+
+# 回滚
+conn.rollback()
+# 关闭连接
+conn.close()
+</code></pre>
+<h3 id="对之前一言爬取的数据存入数据库"><a href="#对之前一言爬取的数据存入数据库" class="headerlink" title="对之前一言爬取的数据存入数据库"></a>对之前一言爬取的数据存入数据库</h3><pre><code class="python">#导包
+import pymysql
+import requests
+import json
+import random
+
+# 定义函数mysql()
+def mysql():
+    # 打开数据库链接
+    conn = pymysql.connect(
+        host=&#39;localhost&#39;,
+        user=&#39;python&#39;,
+        passwd=&#39;python&#39;,
+        db=&#39;python&#39;,
+        charset=&#39;utf8&#39;)
+    return conn
+
+# 定义User-Agent请求头
+def user_agent():
+    # 用户代理池
+    uapools = [
+        # Edge Trident内核 on win10
+        &quot;Mozilla/5.0 (Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/64.0.3282.140 Safari/537.36 Edge/17.17134&quot;,
+        # Edge chromium内核 on win10
+        &quot;Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/80.0.3987.106 Safari/537.36 Edg/80.0.361.54&quot;,
+        # Chrome on win10
+        &quot;Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/80.0.3987.106 Safari/537.36&quot;,
+        # Safari on mac
+        &quot;Mozilla/5.0 (Macintosh; U; Intel Mac OS X 10_6_6; en-US) AppleWebKit/533.20.25 (KHTML, like Gecko) Version/5.0.4 Safari/533.20.27&quot;,
+        # FireFox on windows
+        &quot;Mozilla/5.0 (Windows NT 6.2; WOW64; rv:21.0) Gecko/20100101 Firefox/21.0&quot;,
+        # Opera on mac
+        &quot;Opera/9.80 (Macintosh; Intel Mac OS X 10.6.8; U; en) Presto/2.9.168 Version/11.52&quot;
+    ]
+    # User-Agent
+    ua = uapools[random.randint(0, len(uapools) - 1)]
+    return ua
+
+# 定义函数hitokoto()
+def hitokoto():
+    # 定义url
+    url = &#39;https://v1.hitokoto.cn&#39;
+    # 访问url
+    data = requests.get(url,headers=&#123;&#39;User-Agent&#39; : user_agent()&#125;).text
+    # 匹配字段
+    txt = json.loads(data)
+    res = txt.get(&quot;hitokoto&quot;)
+    return res
+
+# 循环写入数据库
+for i in range(50):
+    # 调用hitokoto函数
+    res = hitokoto()
+    # sql语句
+    sql = &#39;INSERT INTO python (content) VALUES (&quot;&#39;+res+&#39;&quot;)&#39;
+    # 调用mysql函数
+    mysqls = mysql()
+    # 创建游标对象
+    cur = mysqls.cursor()
+    # 使用execute方法执行SQL语句
+    result = cur.execute(&#39;SELECT * FROM python WHERE content=&quot;&#39;+res+&#39;&quot;&#39;)
+    # 使用 fetchone() 方法获取一条数据
+    data = cur.fetchone()
+
+    # 与数据库判断
+    if result == 0:
+        # 异常处理
+        try:
+            # 当前正在执行
+            print(&#39;当前正在执行第&#39;,i+1,&#39;条&#39;,&#39;\n&#39;,res)
+            # 使用execute方法执行SQL语句
+            cur.execute(sql)
+            # 提交到数据库执行
+            mysqls.commit()
+        except:
+            # 如果发生错误则回滚
+            mysqls.rollback()
+    else:
+        continue
+
+# 关闭数据库连接
+mysqls.close()
+</code></pre>
+<h3 id="循环写入数据库部分用删和改实现（单纯为了熟悉语法）"><a href="#循环写入数据库部分用删和改实现（单纯为了熟悉语法）" class="headerlink" title="循环写入数据库部分用删和改实现（单纯为了熟悉语法）"></a>循环写入数据库部分用删和改实现（单纯为了熟悉语法）</h3><pre><code class="Python"># 与数据库判断①  数据库删除语句（删）
+if result != 0:
+    # 使用execute方法执行SQL语句
+    cur.execute(&#39;DELETE FROM python WHERE content=&quot;&#39;+res+&#39;&quot;&#39;)
+    # 提交到数据库执行
+    mysqls.commit()
+    try:
+        # 当前正在执行
+        print(&#39;当前正在执行第&#39;,i+1,&#39;条&#39;,&#39;\n&#39;,res)
+        # 使用execute方法执行SQL语句
+        cur.execute(sql)
+        # 提交到数据库执行
+        mysqls.commit()
+    except:
+        # 如果发生错误则回滚
+        mysqls.rollback()
+elif result == 0:
+    try:
+        # 当前正在执行
+        print(&#39;当前正在执行第&#39;,i+1,&#39;条&#39;,&#39;\n&#39;,res)
+        # 使用execute方法执行SQL语句
+        cur.execute(sql)
+        # 提交到数据库执行
+        mysqls.commit()
+    except:
+        # 如果发生错误则回滚
+        mysqls.rollback()
+else:
+    continue
+
+# 与数据库判断①  数据库更新语句（改）
+if result != 0:
+    # 使用execute方法执行SQL语句
+    cur.execute(&#39;UPDATE python SET content =&quot;&#39;+res+&#39;&quot;WHERE content =&quot;&#39;+res+&#39;&quot;&#39;)
+    # 提交到数据库执行
+    mysqls.commit()
+    continue
+elif result == 0:
+    try:
+        # 当前正在执行
+        print(&#39;当前正在执行第&#39;,i+1,&#39;条&#39;,&#39;\n&#39;,res)
+        # 使用execute方法执行SQL语句
+        cur.execute(sql)
+        # 提交到数据库执行
+        mysqls.commit()
+    except:
+        # 如果发生错误则回滚
+        mysqls.rollback()
+else:
+    continue
+</code></pre>
+]]></content>
+      <categories>
+        <category>Python</category>
+      </categories>
+      <tags>
+        <tag>Python入库</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>Python爬虫-正则表达式</title>
+    <url>/2020/02/23/python-reptile-regularexpression/</url>
+    <content><![CDATA[<h3 id="正则表达式规则"><a href="#正则表达式规则" class="headerlink" title="正则表达式规则"></a>正则表达式规则</h3><table>
+<thead>
+<tr>
+<th>普通字符</th>
+<th>正则匹配</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>\n</td>
+<td>匹配换行符</td>
+</tr>
+<tr>
+<td>\t</td>
+<td>匹配制表符</td>
+</tr>
+<tr>
+<td>\w</td>
+<td>匹配字母，数字，下划线</td>
+</tr>
+<tr>
+<td>\W</td>
+<td>与上面相反</td>
+</tr>
+<tr>
+<td>\d</td>
+<td>匹配十进制数字</td>
+</tr>
+<tr>
+<td>\D</td>
+<td>与上面相反</td>
+</tr>
+<tr>
+<td>\s</td>
+<td>匹配空白字符</td>
+</tr>
+<tr>
+<td>\S</td>
+<td>与上面相反</td>
+</tr>
+<tr>
+<td>[ab89x]</td>
+<td>匹配ab89x中任意一个</td>
+</tr>
+<tr>
+<td>[^ab89x]</td>
+<td>与上面相反</td>
+</tr>
+<tr>
+<td>.</td>
+<td>匹配除换行外任意一个字符</td>
+</tr>
+<tr>
+<td>^</td>
+<td>匹配开始位置</td>
+</tr>
+<tr>
+<td>$</td>
+<td>匹配结束位置</td>
+</tr>
+<tr>
+<td>*</td>
+<td>前一个字符出现0\1\多次</td>
+</tr>
+<tr>
+<td>?</td>
+<td>前一个字符出现0\1</td>
+</tr>
+<tr>
+<td>+</td>
+<td>前一个字符出现1\多次</td>
+</tr>
+<tr>
+<td>{n}</td>
+<td>前一个字符恰好出现n次</td>
+</tr>
+<tr>
+<td>{n,}</td>
+<td>前一个字符至少出现n次</td>
+</tr>
+<tr>
+<td>{n,m}</td>
+<td>前一个字符至少n次最好m次</td>
+</tr>
+<tr>
+<td>|</td>
+<td>模式选择符或</td>
+</tr>
+<tr>
+<td>()</td>
+<td>想要提取的部分</td>
+</tr>
+<tr>
+<td>*?</td>
+<td>懒惰模式（精准匹配）</td>
+</tr>
+<tr>
+<td>+?</td>
+<td>同上</td>
+</tr>
+</tbody></table>
+<h3 id="语法"><a href="#语法" class="headerlink" title="语法"></a>语法</h3><ul>
+<li>导入集成包 <code>import re</code></li>
+<li>re.S | 使其匹配多行</li>
+<li>re.l | 使其匹配忽略大小写</li>
+<li><code>re.compile(&#39;&#39;,re.S或者re.l).findall(&#39;&#39;)</code></li>
+</ul>
+<h3 id="p-s"><a href="#p-s" class="headerlink" title="p.s"></a>p.s</h3><pre><code class="python">import re
+string = &#39;a89cdefg&#39;
+pat = &#39;.c(.*?)f&#39;
+data = re.compile(pat).findall(string)
+print(data)
+
+&gt;&gt;&gt; [&#39;de&#39;]
+</code></pre>
+]]></content>
+      <categories>
+        <category>Python</category>
+      </categories>
+      <tags>
+        <tag>Python爬虫</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>Python爬虫-党史上的今天</title>
+    <url>/2020/07/01/python-reptile-project-day/</url>
+    <content><![CDATA[<h3 id="分析"><a href="#分析" class="headerlink" title="分析"></a>分析</h3><p><img src="https://i.loli.net/2020/07/01/vWTBPN3bJ2sKYDt.png" alt="TIM截图20200701153014.png"></p>
+<ol>
+<li>分析结构，可以发现标题都是h2标签，内容都是p标签，那就直接爬呗！！！</li>
+</ol>
+<pre><code class="python">import requests
+
+url = &#39;http://cpc.people.com.cn/GB/64162/64165/67447/67448/index.html&#39;
+response = requests.get(url)
+print(response.text)
+</code></pre>
+<p><img src="https://i.loli.net/2020/07/01/Pxu5zMlmv8CwpZ2.png" alt="TIM截图20200701152711.png"><br>发现中文乱码</p>
+<p><img src="https://i.loli.net/2020/07/01/Bi2DxKnIaZqztOc.png" alt="TIM截图20200701151957.png"><br>查看编码结果是GB2312，这就好办了，进行解码不就完事了</p>
+<pre><code class="python">import requests
+
+url = &#39;http://cpc.people.com.cn/GB/64162/64165/67447/67448/index.html&#39;
+response = requests.get(url)
+response.encoding = &#39;GB2312&#39;
+print(response.text)
+</code></pre>
+<p>对比网页源代码发现内容一致，说明人民网没做任何反爬机制，这emmm</p>
+<ol start="2">
+<li>获取想要的内容</li>
+</ol>
+<pre><code class="python">import requests
+from lxml import etree
+
+url = f&#39;http://cpc.people.com.cn/GB/64162/64165/67447/67448/index.html&#39;
+response = requests.get(url)
+response.encoding = &#39;GB2312&#39;
+# print(response.text)
+html = etree.HTML(response.text)
+
+title_pat = &#39;//div[@class=&quot;p1_content clearfix&quot;]/div[@class=&quot;p1_02 clearfix width884&quot;]/h2/text()&#39;
+des_pat = &#39;//div[@class=&quot;p1_content clearfix&quot;]/div[@class=&quot;p1_02 clearfix width884&quot;]/p/text()&#39;
+title = html.xpath(title_pat)
+des = html.xpath(des_pat)
+# 转换为元组
+itemZip = zip(title, des)
+# 转换为字典
+content = dict(itemZip)
+print(content)
+</code></pre>
+<ol start="3">
+<li>我们不知想要当天的，我们还要其他的，分析网址</li>
+</ol>
+<pre><code class="url">http://cpc.people.com.cn/GB/64162/64165/67447/67448/index.html
+http://cpc.people.com.cn/GB/64162/64165/67447/67449/index.html
+http://cpc.people.com.cn/GB/64162/64165/67447/67450/index.html
+http://cpc.people.com.cn/GB/64162/64165/67447/67458/index.html
+http://cpc.people.com.cn/GB/64162/64165/67447/67506/index.html
+</code></pre>
+<p>发现前面几个还是有规律的，后面就乱序了，这。。，我们从按钮入手<br><img src="https://i.loli.net/2020/07/01/zk4MjrxewLyOasY.png" alt="TIM截图20200701152316.png"></p>
+<p>发现<code>查看信息</code>按钮是通过JavaScript脚本go()函数执行的，接下来就是寻找go函数<br><img src="https://i.loli.net/2020/07/01/WXBtLeDCVuHF2Ix.png" alt="TIM截图20200701141453.png"></p>
+<p>发现有2个位置有go()函数，点进去可以发现只有<code>cpc_review.js</code>才是我们想要的，找到JavaScript部分就好办了。<br><img src="https://i.loli.net/2020/07/01/q8n3IbkiZcYDWvw.png" alt="TIM截图20200701141732.png"></p>
+<p>发现这不就是switch-case 语句，先通过第一个case分析月份再通过第二个case在定位到月份</p>
+<p>显而易见链接前半部分都是相同的，后办部分为<code>月/日</code>，最终确认链接为<br><code>http://cpc.people.com.cn/GB/64162/64165/月/日/index.html</code></p>
+<p>这就好办了 那就直接爬呗<br>但月份正则并不好提取，反正就12个月份，直接手撸呗！！！</p>
+<p>上代码hhhh</p>
+<pre><code class="python">import re
+import requests
+
+monuth = [76621, 77552, 77585, 78561, 79703, 82273, 67447, 68640, 70293, 70486, 72301, 74856]
+day_list = []
+
+for item in monuth:
+    url = &#39;http://cpc.people.com.cn/img/2010cpc_lishishangdejintian/cpc_review.js&#39;
+    response = requests.get(url).text
+    url_pat = f&#39;http://cpc.people.com.cn/GB/64162/64165/&#123;item&#125;/(.*?)/index.html&#39;
+    url = re.compile(url_pat).findall(response)
+    day_list.append(url)
+
+print(day_list)
+</code></pre>
+<h3 id="项目封装"><a href="#项目封装" class="headerlink" title="项目封装"></a>项目封装</h3><pre><code class="python"># 导入包
+import re
+import requests
+import time
+from lxml import etree
+
+monuth_list = [76621, 77552, 77585, 78561, 79703, 82273, 67447, 68640, 70293, 70486, 72301, 74856]
+day_list = []
+
+def day():
+    &#39;&#39;&#39;
+
+    :return:
+    &#39;&#39;&#39;
+    for item in monuth_list:
+        url = &#39;http://cpc.people.com.cn/img/2010cpc_lishishangdejintian/cpc_review.js&#39;
+        response = requests.get(url).text
+        url_pat = f&#39;http://cpc.people.com.cn/GB/64162/64165/&#123;item&#125;/(.*?)/index.html&#39;
+        url = re.compile(url_pat).findall(response)
+        day_list.append(url)
+    # print(day_list)
+
+def search(mon:int, day:int):
+    &#39;&#39;&#39;
+    搜索获取今日党史
+    :param mon: 月
+    :param day: 日
+    :return: 内容
+    &#39;&#39;&#39;
+    mon = monuth_list[mon - 1]
+    day = day_list[monuth_list.index(mon)][day - 1]
+    url = f&#39;http://cpc.people.com.cn/GB/64162/64165/&#123;mon&#125;/&#123;day&#125;/index.html&#39;
+    response = requests.get(url)
+    response.encoding = &#39;GB2312&#39;
+    html = etree.HTML(response.text)
+
+    title_pat = &#39;//div[@class=&quot;p1_content clearfix&quot;]/div[@class=&quot;p1_02 clearfix width884&quot;]/h2/text()&#39;
+    des_pat = &#39;//div[@class=&quot;p1_content clearfix&quot;]/div[@class=&quot;p1_02 clearfix width884&quot;]/p/text()&#39;
+    title = html.xpath(title_pat)
+    des = html.xpath(des_pat)
+    itemZip = zip(title, des)
+
+    # print(dict(itemZip))
+    return dict(itemZip)
+
+if __name__ == &#39;__main__&#39;:
+    day()
+    monuth = time.localtime().tm_mon
+    day = time.localtime().tm_mday
+    print(search(monuth, day))
+</code></pre>
+<h3 id="Flask分装api"><a href="#Flask分装api" class="headerlink" title="Flask分装api"></a>Flask分装api</h3><p><img src="https://i.loli.net/2020/07/01/esR9Zp6P7C4r5Uh.png" alt="TIM截图20200701151209.png"></p>
+<pre><code class="python"># 导入包
+import re
+import requests
+import time
+from lxml import etree
+from flask import Flask, request, json, Response
+
+monuth_list = [76621, 77552, 77585, 78561, 79703, 82273, 67447, 68640, 70293, 70486, 72301, 74856]
+day_list = []
+
+
+def day():
+    &#39;&#39;&#39;
+
+    :return:
+    &#39;&#39;&#39;
+    for item in monuth_list:
+        url = &#39;http://cpc.people.com.cn/img/2010cpc_lishishangdejintian/cpc_review.js&#39;
+        response = requests.get(url).text
+        url_pat = f&#39;http://cpc.people.com.cn/GB/64162/64165/&#123;item&#125;/(.*?)/index.html&#39;
+        url = re.compile(url_pat).findall(response)
+        day_list.append(url)
+
+
+def search(mon, day):
+    &#39;&#39;&#39;
+    搜索获取今日党史
+    :param mon: 月
+    :param day: 日
+    :return: 内容
+    &#39;&#39;&#39;
+    mon = monuth_list[int(mon) - 1]
+    day = day_list[monuth_list.index(int(mon))][int(day) - 1]
+    url = f&#39;http://cpc.people.com.cn/GB/64162/64165/&#123;mon&#125;/&#123;day&#125;/index.html&#39;
+    response = requests.get(url)
+    response.encoding = &#39;GB2312&#39;
+    html = etree.HTML(response.text)
+
+    title_pat = &#39;//div[@class=&quot;p1_content clearfix&quot;]/div[@class=&quot;p1_02 clearfix width884&quot;]/h2/text()&#39;
+    des_pat = &#39;//div[@class=&quot;p1_content clearfix&quot;]/div[@class=&quot;p1_02 clearfix width884&quot;]/p/text()&#39;
+    title = html.xpath(title_pat)
+    des = html.xpath(des_pat)
+    itemZip = zip(title, des)
+
+    # print(dict(itemZip))
+    return dict(itemZip)
+
+
+app = Flask(__name__)
+
+
+@app.route(&#39;/&#39;)
+def index():
+    mon = request.args.get(&quot;mon&quot;)
+    day = request.args.get(&quot;day&quot;)
+    if mon == None or day == None:
+        mon = time.localtime().tm_mon
+        day = time.localtime().tm_mday
+    print(mon, day)
+    res = &#123;
+        &#39;code&#39;: 0,
+        &#39;tips&#39;: &#39;获取成功&#39;,
+        &#39;data&#39;: search(mon, day)
+    &#125;
+    return Response(json.dumps(res, ensure_ascii=False), mimetype=&#39;application/json&#39;)
+
+
+if __name__ == &#39;__main__&#39;:
+    day()
+    app.run()
+</code></pre>
+]]></content>
+      <categories>
+        <category>Python</category>
+      </categories>
+      <tags>
+        <tag>Python爬虫-完整项目分析</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>Python爬虫-Requests模块</title>
+    <url>/2020/03/08/python-reptile-requests/</url>
+    <content><![CDATA[<h3 id="安装Requests模块"><a href="#安装Requests模块" class="headerlink" title="安装Requests模块"></a>安装Requests模块</h3><pre><code class="Cmd">pip install requests
+</code></pre>
+<h3 id="Requests语法"><a href="#Requests语法" class="headerlink" title="Requests语法"></a>Requests语法</h3><pre><code class="Python">import requests
+# 构造get请求头参数部分
+argument = &#123;
+    &#39;cate&#39;: &#39;realtimehot&#39;
+&#125;
+# 向指定的url发送get含有参数的请求
+response = requests.get(&#39;https://s.weibo.com/top/summary&#39;,params=argument)
+# 返回状态码
+print(response.status_code)
+# 返回网站的编码
+print(response.encoding)
+# 返回网站对象
+print(response.text)
+</code></pre>
+<h3 id="小案例-爬取微博热搜"><a href="#小案例-爬取微博热搜" class="headerlink" title="小案例-爬取微博热搜"></a>小案例-爬取微博热搜</h3><pre><code class="Python"># 导入包
+import requests
+import re
+
+# 构造url,user-agent,get请求头参数部分
+ua = &#123;
+    &#39;User-Agent&#39; : &#39;Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/80.0.3987.132 Safari/537.36&#39;
+&#125;
+argument = &#123;
+    &#39;cate&#39;: &#39;realtimehot&#39;
+&#125;
+url = &#39;https://s.weibo.com/top/summary&#39;
+
+# 向指定的url发送get含有参数的请求
+response = requests.get(url,params=argument,headers=ua)
+
+# 返回网站对象
+code = response.status_code
+res = response.text
+# if判断访问状态码是否为200
+if code == 200 :
+    # 正则匹配
+    pat=&quot;target=\&quot;_blank\&quot;&gt;.*?(.*?)&lt;/a&gt;.*?&lt;span&gt;&quot;
+    result=re.compile(pat,re.S).findall(res)
+
+    # for循环，重新排版
+    for j in range(0,len(result)):
+        print(str(j+1)+&quot;·&quot;+result[j])
+</code></pre>
+]]></content>
+      <categories>
+        <category>Python</category>
+      </categories>
+      <tags>
+        <tag>Python爬虫</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>Python爬虫-Urllib初探</title>
+    <url>/2020/02/23/python-reptile-urllib/</url>
+    <content><![CDATA[<h3 id="通过爬虫百度html初探urllib语法"><a href="#通过爬虫百度html初探urllib语法" class="headerlink" title="通过爬虫百度html初探urllib语法"></a>通过爬虫百度html初探urllib语法</h3><pre><code class="Python"># 导入包urllib
+import urllib.request
+# 向指定的url发送请求，并返回服务器响应的类文件对象
+response = urllib.request.urlopen(&quot;http://www.baidu.com/&quot;)
+# 类文件对象支持 文件对象的操作方法，如read()方法读取文件全部内容，返回bytes字符串
+html = response.read()
+#返回 bytes 对象, 所以要通过 decode() 解码成 str
+res=html.decode(&#39;utf-8&#39;,&#39;ignore&#39;)
+print(res)
+</code></pre>
+<h3 id="爬取一言txt接口"><a href="#爬取一言txt接口" class="headerlink" title="爬取一言txt接口"></a>爬取一言txt接口</h3><pre><code class="Python">import urllib.request
+url = &#39;https://v1.hitokoto.cn/?c=f&amp;encode=text&#39;
+data = urllib.request.urlopen(url).read().decode(&#39;utf-8&#39;,&#39;ignore&#39;)
+print(data)
+</code></pre>
+<ul>
+<li>不是所有api都提供txt，一般都是json，于是有了下面正则表达式匹配</li>
+</ul>
+<h3 id="爬取一言json接口-通过正则表达式"><a href="#爬取一言json接口-通过正则表达式" class="headerlink" title="爬取一言json接口-通过正则表达式"></a>爬取一言json接口-通过正则表达式</h3><pre><code class="Python">import urllib.request
+import re
+url = &#39;https://v1.hitokoto.cn&#39;
+data = urllib.request.urlopen(url).read().decode(&#39;utf-8&#39;,&#39;ignore&#39;)
+pat = &#39;&quot;hitokoto&quot;: &quot;(.*?)&quot;,&#39;
+res = re.compile(pat,re.S).findall(data)
+print(res)
+</code></pre>
+<h3 id="进阶爬取一言json接口-通过json包"><a href="#进阶爬取一言json接口-通过json包" class="headerlink" title="进阶爬取一言json接口-通过json包"></a>进阶爬取一言json接口-通过json包</h3><pre><code class="Python">#导入集成json包
+import json
+import urllib.request
+url = &#39;https://v1.hitokoto.cn&#39;
+data = urllib.request.urlopen(url).read().decode(&#39;utf-8&#39;,&#39;ignore&#39;)
+#用于将data解码 JSON 数据
+txt= json.loads(data)
+#匹配字段
+res=txt.get(&quot;hitokoto&quot;)
+print(res)
+</code></pre>
+]]></content>
+      <categories>
+        <category>Python</category>
+      </categories>
+      <tags>
+        <tag>Python爬虫</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>云计算赛项-私有云笔记一（基础运维）</title>
+    <url>/2021/05/11/cloudcomping-private-1/</url>
+    <content><![CDATA[<h2 id="【题目1】镜像管理"><a href="#【题目1】镜像管理" class="headerlink" title="【题目1】镜像管理"></a>【题目1】镜像管理</h2><blockquote>
+<p>在openstack 私有云平台上， 基于cirros-0.3.4-x86_64-disk.img 镜像， 使用命令创建一个名为cirros 的镜像。</p>
+</blockquote>
+<pre><code class="shell">openstack image create --disk-format qcow2 --container-format bare --file /opt/cirros-0.5.2-x86_64-disk.img cirros
+glance image-create --disk-format qcow2 --container-format bare --file /opt/cirros-0.5.2-x86_64-disk.img --name cirros
+</code></pre>
+<h2 id="【题目2】实例类型管理"><a href="#【题目2】实例类型管理" class="headerlink" title="【题目2】实例类型管理"></a>【题目2】实例类型管理</h2><blockquote>
+<p>在openstack 私有云平台上，使用命令创建一个名为Fmin，ID为1，内存为1024 MB，磁盘为10 GB，vcpu 数量为1 的云主机类型。</p>
+</blockquote>
+<pre><code class="shell">openstack flavor create --id 1 --ram 1024 --disk 10 --vcpus 1 Fmin
+</code></pre>
+<h2 id="【题目3】网络管理"><a href="#【题目3】网络管理" class="headerlink" title="【题目3】网络管理"></a>【题目3】网络管理</h2><blockquote>
+<p>在openstack 私有云平台上，创建云主机网络extnet，子网extsubnet，虚拟机网段为192.168.y.0/24（其中y 是vlan 号），网关为192.168.y.1 假设vlan号为10</p>
+</blockquote>
+<pre><code class="shell">openstack network create --provider-network-type vlan --provider-segment 10 --provider-physical-network provider --external --share extnet
+openstack subnet create --subnet-range 192.168.10.0/24 --network extnet extsubnet
+</code></pre>
+<h2 id="【题目4】云主机管理"><a href="#【题目4】云主机管理" class="headerlink" title="【题目4】云主机管理"></a>【题目4】云主机管理</h2><blockquote>
+<p>在openstack 私有云平台上，基于“cirros”镜像、flavor 使用“Fmin”、extnet 的网络，创建一台虚拟机VM1，启动VM1，并使用PC 机能远程登录到VM1。</p>
+</blockquote>
+<pre><code class="shell">openstack server create --flavor Fmin --image cirros --nic net-id=5babf7fd-bd07-4316-853b-de2dcecd1118 VM1
+
+# 如果指定可用区 --availability-zone nova:compute1
+</code></pre>
+<h2 id="【题目5】Cinder-管理"><a href="#【题目5】Cinder-管理" class="headerlink" title="【题目5】Cinder 管理"></a>【题目5】Cinder 管理</h2><blockquote>
+<p>在openstack 私有云平台上，创建一个名为“lvm”的卷类型，创建一块卷设备，名字为block、类型为lvm 的40G 云硬盘，并附加到虚拟机VM1 上。</p>
+</blockquote>
+<pre><code class="shell">openstack volume type create lvm
+openstack volume create --size 40 --type lvm block
+openstack server add volume VM1 block
+</code></pre>
+<h2 id="【题目6】Raid-管理"><a href="#【题目6】Raid-管理" class="headerlink" title="【题目6】Raid 管理"></a>【题目6】Raid 管理</h2><blockquote>
+<p>在OpenStack 私有云平台，创建一台云主机，并创建一个40G 大小的cinder 块存储，将块存储连接到云主机，然后在云主机上对云硬盘进行操作。要求分出4 个大小为5G 的分区，使用这4 个分区，创建名为/dev/md5、raid 级别为5的磁盘阵列加一个热备盘（使用最后一个分区作为热备盘）。</p>
+</blockquote>
+<h3 id="分区"><a href="#分区" class="headerlink" title="分区"></a>分区</h3><pre><code class="shell">parted /dev/vdb
+mklabel gpt
+mkpart 1 1G 6G
+mkpart 2 6G 11G
+mkpart 3 11G 16G
+mkpart 4 16G 21G
+</code></pre>
+<h3 id="Raid"><a href="#Raid" class="headerlink" title="Raid"></a>Raid</h3><pre><code class="shell">yum install mdadm
+mdadm --create --auto=yes /dev/md5 --level=5 --raid-devices=3 --spare-devices=1 /dev/vdb[1-4]
+
+可以缩写为：mdadm –C –a yes /dev/md5 –l5 –n3 –x1 /dev/vdb[1-4]
+-create                        表示要创建raid
+--auto=yes /dev/md5            是否自动检测,新建立的软件磁盘陈列设备为md5,md序号可以为0-9
+--level=5                      磁盘阵列的等级，这里是raid5
+-raid-devices                  所需使用的磁盘数量
+--spare-devices              添加作为预备（spare）磁盘的块数
+/dev/vdb[1-4]                 磁盘阵列所使用的设备，还可以写成&quot;/dev/vdb1 /dev/vdb2 /dev/vdb3 /dev/vdb4&quot;
+</code></pre>
+<h3 id="永久挂载"><a href="#永久挂载" class="headerlink" title="永久挂载"></a>永久挂载</h3><pre><code class="shell">①创建文件系统
+mkfs.ext4 /dev/md5
+
+②查看/dev/md5的UUID
+blkid -o list | grep md5  或  ll /dev/disk/by-uuid lsblk-f
+
+③将md5挂载在/backup目录，并开机自动挂载
+vi /etc/fstab
+UUID=228bb98d-a14c-4746-b48c-75c1595e9637 /backup ext4 defaults 0 0     添加该行
+
+其中第一列为UUID;
+第二列为挂载目录（该目录必须为空目录，必须存在）;
+第三列为文件系统类型;
+第四列为参数;
+第五列0表示不备份;
+最后一列必须为２或0(除非引导分区为1)
+
+④ fstab文件不重启生效
+mount -a
+</code></pre>
+<h2 id="【题目7】数据库主从管理"><a href="#【题目7】数据库主从管理" class="headerlink" title="【题目7】数据库主从管理"></a>【题目7】数据库主从管理</h2><blockquote>
+<p>使用OpenStack 私有云平台，创建两台云主机vm1 和vm2，在这两台云主机上分别安装数据库服务，并配置成主从数据库，vm1 节点为主库，vm2 节点为从库（数据库密码设置为000000）。</p>
+</blockquote>
+<pre><code class="shell">*修改hostname  hosts  yum源  关闭防火墙
+yum -y install mariadb mariadb-server
+
+    初始化改密码
+    法①mysql_secure_installation &lt;&lt; EOF
+
+    Y                Set root password           是否设置root密码
+    000000  New password                设置root用户的密码
+    000000  Re-enter new password       再输入一次你设置的密码
+    Y                Remove anonymous users      是否删除匿名用户
+    N                Disallow root login remotely            是否禁用root远程登录
+    Y                Remove test database and access to it    是否删除test数据库
+    Y                Reload privilege tables now        是否重新加载权限表
+    EOF
+
+    法②mysqladmin改密码
+    mysqladmin -uroot password 000000
+
+sed -i &#39;13a log-bin = mysql-bin&#39; /etc/my.cnf.d/mariadb-server.cnf
+sed -i &#39;14a binlog-ignore-db = mysql&#39; /etc/my.cnf.d/mariadb-server.cnf
+sed -i &#39;15a server-id = 1&#39; /etc/my.cnf.d/mariadb-server.cnf            vm1：server_id=1，vm2：server_id=2
+systemctl restart mariadb-server mariadb
+
+vm1：
+    ①
+    mysql -uroot -p000000 -e &quot;create user &#39;repl&#39;@&#39;%&#39; identified by &#39;000000&#39;;&quot;
+    mysql -uroot -p000000 -e &quot;grant replication slave on *.* to &#39;repl&#39;@&#39;%&#39;;&quot;
+
+    ②
+    mysql -uroot -p000000 -e &quot;grant replication slave on *.* to &#39;repl&#39;@&#39;%&#39; identified by &#39;000000&#39;;&quot;  用户不存在自动创建，注意：mysql8之后需要先创建用户，之后才能授权
+
+    mysql -uroot -p000000 -e &quot;flush privileges;&quot;
+    mysql -uroot -p000000 -e &quot;select user,host from mysql.user;&quot;    查看是否具有远程权限，%为有
+    mysql -uroot -p000000 -e &quot;show master status\G;&quot;  查看master状态
+
+vm2：
+    mysql -uroot -p000000 -e &quot;stop slave;&quot;
+    mysql -uroot -p000000 -e &quot;change master to master_host=&#39;vm1&#39;,master_password=&#39;000000&#39;,master_user=&#39;repl&#39;;&quot;
+    mysql -uroot -p000000 -e &quot;start slave;&quot;
+    mysql -uroot -p000000 -e &quot;show slave status\G;&quot;                    查看slave状态
+</code></pre>
+<h3 id="读写分离"><a href="#读写分离" class="headerlink" title="读写分离"></a>读写分离</h3><pre><code class="shell">yum install java-1.8.0
+tar -zxvf /opt/Mycat-server-1.6.7.4-release-20200105164103-linux.tar.gz -C /usr/local
+cd /usr/local/mycat/
+</code></pre>
+<pre><code class="shell">vi conf/schema.xml
+&lt;?xml version=&quot;1.0&quot;?&gt;
+&lt;!DOCTYPE mycat:schema SYSTEM &quot;schema.dtd&quot;&gt;
+&lt;mycat:schema xmlns:mycat=&quot;http://io.mycat/&quot;&gt;
+    &lt;schema name=&quot;TESTDB&quot; checkSQLschema=&quot;true&quot; sqlMaxLimit=&quot;100&quot; randomDataNode=&quot;dn1&quot;&gt;  checkSQLschema需为true 否则报 1146-table does not exist；或者name和实际数据表名相同
+        &lt;table name=&quot;test&quot; dataNode=&quot;dn1&quot; rule=&quot;rule1&quot;/&gt;                            ①name需要和实际数据库的表名 dn1和下面dataNode相同 rule与rule.xml相同 ②schema直接指定dataNode
+    &lt;/schema&gt;
+    &lt;dataNode name=&quot;dn1&quot; dataHost=&quot;localhost1&quot; database=&quot;mycat&quot; /&gt;                    dataHost和下面dataHost相同，database为实际数据库
+    &lt;dataHost name=&quot;localhost1&quot; maxCon=&quot;1000&quot; minCon=&quot;10&quot; balance=&quot;0&quot;
+              writeType=&quot;0&quot; dbType=&quot;mysql&quot; dbDriver=&quot;native&quot; switchType=&quot;1&quot;  slaveThreshold=&quot;100&quot;&gt;
+        &lt;heartbeat&gt;select user()&lt;/heartbeat&gt;
+        &lt;writeHost host=&quot;hostM1&quot; url=&quot;192.168.200.82:3306&quot; user=&quot;root&quot;                mysql的物理主机写节点
+                   password=&quot;123456&quot;&gt;
+            &lt;readHost host=&quot;hostS2&quot; url=&quot;192.168.200.61:3306&quot; user=&quot;root&quot;            mysql的物理主机读节点
+            password=&quot;123456&quot; /&gt;
+        &lt;/writeHost&gt;
+    &lt;/dataHost&gt;
+&lt;/mycat:schema&gt;
+</code></pre>
+<pre><code class="shell">vi conf/server.xml
+&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;
+&lt;!DOCTYPE mycat:server SYSTEM &quot;server.dtd&quot;&gt;
+&lt;mycat:server xmlns:mycat=&quot;http://io.mycat/&quot;&gt;
+    &lt;system&gt;
+    &lt;property name=&quot;nonePasswordLogin&quot;&gt;0&lt;/property&gt;
+    &lt;property name=&quot;ignoreUnknownCommand&quot;&gt;0&lt;/property&gt;
+    &lt;property name=&quot;useHandshakeV10&quot;&gt;1&lt;/property&gt;
+    &lt;property name=&quot;removeGraveAccent&quot;&gt;1&lt;/property&gt;
+    &lt;property name=&quot;useSqlStat&quot;&gt;0&lt;/property&gt;
+    &lt;property name=&quot;useGlobleTableCheck&quot;&gt;0&lt;/property&gt;
+        &lt;property name=&quot;sqlExecuteTimeout&quot;&gt;300&lt;/property&gt;
+        &lt;property name=&quot;sequnceHandlerType&quot;&gt;1&lt;/property&gt;
+        &lt;property name=&quot;sequnceHandlerPattern&quot;&gt;(?:(\s*next\s+value\s+for\s*MYCATSEQ_(\w+))(,|\)|\s)*)+&lt;/property&gt;
+    &lt;property name=&quot;subqueryRelationshipCheck&quot;&gt;false&lt;/property&gt;
+    &lt;property name=&quot;sequenceHanlderClass&quot;&gt;io.mycat.route.sequence.handler.HttpIncrSequenceHandler&lt;/property&gt;
+        &lt;property name=&quot;processorBufferPoolType&quot;&gt;0&lt;/property&gt;
+        &lt;property name=&quot;handleDistributedTransactions&quot;&gt;0&lt;/property&gt;
+        &lt;property name=&quot;useOffHeapForMerge&quot;&gt;0&lt;/property&gt;
+        &lt;property name=&quot;memoryPageSize&quot;&gt;64k&lt;/property&gt;
+        &lt;property name=&quot;spillsFileBufferSize&quot;&gt;1k&lt;/property&gt;
+        &lt;property name=&quot;useStreamOutput&quot;&gt;0&lt;/property&gt;
+        &lt;property name=&quot;systemReserveMemorySize&quot;&gt;384m&lt;/property&gt;
+        &lt;property name=&quot;useZKSwitch&quot;&gt;false&lt;/property&gt;
+        &lt;property name=&quot;strictTxIsolation&quot;&gt;false&lt;/property&gt;
+        &lt;property name=&quot;useZKSwitch&quot;&gt;true&lt;/property&gt;
+        &lt;property name=&quot;parallExecute&quot;&gt;0&lt;/property&gt;
+    &lt;/system&gt;
+    &lt;user name=&quot;root&quot; defaultAccount=&quot;true&quot;&gt;
+        &lt;property name=&quot;password&quot;&gt;123456&lt;/property&gt;
+        &lt;property name=&quot;schemas&quot;&gt;TESTDB&lt;/property&gt;                                                        需要和上面的name相同
+        &lt;property name=&quot;defaultSchema&quot;&gt;TESTDB&lt;/property&gt;
+    &lt;/user&gt;
+    &lt;user name=&quot;user&quot;&gt;
+        &lt;property name=&quot;password&quot;&gt;user&lt;/property&gt;
+        &lt;property name=&quot;schemas&quot;&gt;TESTDB&lt;/property&gt;
+        &lt;property name=&quot;readOnly&quot;&gt;true&lt;/property&gt;
+        &lt;property name=&quot;defaultSchema&quot;&gt;TESTDB&lt;/property&gt;
+    &lt;/user&gt;
+
+&lt;/mycat:server&gt;
+
+bin/mycat start
+cat logs/wrapper.log 显示MyCAT Server startup successfully. see logs in logs/mycat.log为成功
+netstate -ntpl 有8066和8066为成功开放端口
+
+错误：
+Startup failed: Timed out waiting for a signal from the JVM.
+JVM did not exit on request, terminated
+解决办法：
+在wrapper.conf中添加
+wrapper.startup.timeout=300
+wrapper.ping.timeout=120
+</code></pre>
+<h2 id="【题目8】云平台安全策略提升"><a href="#【题目8】云平台安全策略提升" class="headerlink" title="【题目8】云平台安全策略提升"></a>【题目8】云平台安全策略提升</h2><blockquote>
+<p>使用OpenStack 私有云平台，通过提供的相关软件包，安装必要组件，将私有云平台的访问策略从http 提升至https。</p>
+</blockquote>
+<pre><code class="shell">yum install mod_ssl mod_wsgi httpd
+
+vi /etc/httpd/conf.d/ssl.conf
+删除 SSLProtocol下的 -SSLv3
+
+vi /etc/openstack-dashboard/local_settings
+
+CSRF_COOKIE_SECURE = True            将该行的注释取消
+SESSION_COOKIE_SECURE = True        将该行的注释取消
+USE_SSL = True                        添加该行
+SESSION_COOKIE_HTTPONLY = True        添加该行
+
+systemctl restart httpd
+systemctl restart memcached
+</code></pre>
+<h2 id="【题目】RabbitMQ集群"><a href="#【题目】RabbitMQ集群" class="headerlink" title="【题目】RabbitMQ集群"></a>【题目】RabbitMQ集群</h2><blockquote>
+<p>登录私有云平台，使用centos7镜像创建三台云主机来搭建rabbitmq集群。使用普通集群模式，其中一台做磁盘节点，另外两台做内存节点，配置完毕后启动rabbitmq服务。</p>
+</blockquote>
+<pre><code class="shell">修改hosts  yum源  关闭防火墙
+
+node1：
+    yum -y install rabbitmq-server
+     rabbitmq-plugins enable rabbitmq_management        启动web管理插件
+    systemctl restart rabbitmq-server
+    yum -y install net-tools
+    netstat -ntpl                                    4369 dns 15672 web 5672 amqp
+    scp /var/lib/rabbitmq/.erlang.cookie node2:/var/lib/rabbitmq/
+    scp /var/lib/rabbitmq/.erlang.cookie node3:/var/lib/rabbitmq/
+
+node2：
+    yum install rabbitmq-server
+    rabbitmq-plugins enable rabbitmq_management
+    systemctl restart rabbitmq-server
+    yum -y install net-tools
+    netstat -ntpl
+    rabbitmqctl stop_app
+    rabbitmqctl join_cluster --ram rabbit@node1
+    rabbitmqctl start_app
+
+node3：
+    yum install rabbitmq-server
+    rabbitmq-plugins enable rabbitmq_management
+    systemctl restart rabbitmq-server
+    yum -y install net-tools
+    netstat -ntpl
+    rabbitmqctl stop_app
+    rabbitmqctl join_cluster --ram rabbit@node1
+    rabbitmqctl start_app
+
+rabbitmqctl cluster_status            查看集群状态
+
+增加节点停止节点后再次启动遇到无法启动解决办法
+rabbitmqctl stop
+rabbitmq-server -detached
+</code></pre>
+<h2 id="【题目】手工迁移"><a href="#【题目】手工迁移" class="headerlink" title="【题目】手工迁移"></a>【题目】手工迁移</h2><pre><code class="shell">openstack server list
+cd /var/lib/nova/instances/
+scp -rp e70df9af-057c-49b5-9056-68903d22c84d compute2:/var/lib/nova/instances/
+
+mysql -uroot -p000000
+show databases;
+use nova;
+show tables;
+UPDATE instances SET host=&quot;compute2&quot;,node=&quot;compute2&quot; where uuid=&quot;e70df9af-057c-49b5-9056-68903d22c84d&quot;;
+
+在compute2修改属主
+chown nova:nova -R /var/lib/nova/instances/e70df9af-057c-49b5-9056-68903d22c84d
+</code></pre>
+<p>##【题目】heat 模板管理</p>
+<blockquote>
+<p>在openstack私有云平台上，在/root目录下编写模板server.yaml，创建名为“m1.flavor”、 ID 为 1234、内存为1024MB、硬盘为20GB、vcpu数量为 1的云主机类型</p>
+</blockquote>
+<pre><code>vi /root/server.yaml
+
+heat_template_version: 2018-03-02
+description: Simple template to deploy a single flavor
+resources:
+  server:
+    type: OS::Nova::Flavor
+    properties:
+      disk: 20
+      flavorid: 1234
+      name: m1.flavor
+      ram: 1024
+      vcpus: 1
+
+openstack stack create --template /root/server.yaml flavor
+</code></pre>
+<h2 id="【题目】swift后端存储-2040"><a href="#【题目】swift后端存储-2040" class="headerlink" title="【题目】swift后端存储  2040"></a>【题目】swift后端存储  2040</h2><pre><code class="shell">vi /etc/glance/glance-api.conf
+
+[glance_store]
+*stores =  glance.store.swift.Store                   可不改
+*default_store = swift
+swift_store_region = RegionOne
+swift_store_endpoint_type = internalURL
+swift_store_container = glance                        将要被创建的容器
+swift_store_large_object_size = 5120                  最大5G限制，但与glance结合后限制无效
+swift_store_large_object_chunk_size = 200             最大200个容器
+*swift_store_create_container_on_put = True           上传开
+*swift_store_multi_tenant = True                      启用多租户存储模式，该模式导致Glance图像存储在租户特定的Swift帐户中
+swift_store_admin_tenants = service
+*swift_store_auth_address = http://controller:5000/v3.0/
+*swift_store_user = glance
+*swift_store_key = 000000
+
+systemctl restart openstack-glance*
+带*为必改
+</code></pre>
+<h2 id="【题目】虚拟机调整flavor"><a href="#【题目】虚拟机调整flavor" class="headerlink" title="【题目】虚拟机调整flavor"></a>【题目】虚拟机调整flavor</h2><blockquote>
+<p>在Controller节点中编写名为modvm.sh的shell脚本查看云主机VM1的内存大小，如果内存小于2G，调整云主机VM1的内存为2G。</p>
+</blockquote>
+<pre><code class="shell">vi /etc/nova/nova.conf
+allow_resize_to_same_host=True                                     取消注释，并把false改为true 150
+
+systemctl restart openstack-nova*
+
+vi modvm.sh
+
+source /etc/keystone/admin-openrc.sh
+flavor=`openstack server show VM1 | grep flavor | awk &#39;&#123;print $4&#125;&#39;`
+echo $flavor
+ram=`openstack flavor show $flavor | grep ram | awk &#39;&#123;print $4&#125;&#39;`
+echo $ram
+if [ $&#123;ram&#125; -lt 2048 ] ;then
+    openstack flavor create --ram 2048 --disk $(openstack flavor show $flavor | grep disk | awk &#39;&#123;print $4&#125;&#39;) --vcpu $(openstack flavor show $flavor | grep vcpu | awk &#39;&#123;print $4&#125;&#39;) vm
+    openstack server resize --flavor vm VM1
+    sleep 3
+    openstack server resize --confirm VM1
+    echo &#39;finished&#39;
+fi
+
+bash modvm.sh
+</code></pre>
+<h2 id="【题目】zun的运维"><a href="#【题目】zun的运维" class="headerlink" title="【题目】zun的运维"></a>【题目】zun的运维</h2><blockquote>
+<p>上传CentOS7_1804.tar镜像到私有云平台，命名为centos7.5-docker。然后使用该镜像启动一个名为chinaskill-container的容器</p>
+</blockquote>
+<pre><code class="shell">openstack image create --disk-format raw --container-format docker --file /opt/openstack/images/CentOS7_1804.tar centos7.5-docker
+openstack appcontainer run --name chinaskill-container --cpu 2 --memory 2048 --net network=ext --image-driver glance centos7.5-docker  /bin/bash
+
+--image-driver 灰常重要，指定仓库地址为glance 默认指向docker
+</code></pre>
+<h2 id="【题目】swift的运维"><a href="#【题目】swift的运维" class="headerlink" title="【题目】swift的运维"></a>【题目】swift的运维</h2><blockquote>
+<p>在controller节点上新建名为Chinaskill的容器，并获取该容器的存放路径；将 centos7_5.qcow2 镜像上传到chinaskill容器中，并设置分段存放， 每一段大小为 10M。</p>
+</blockquote>
+<pre><code class="shell">openstack container create Chinaskill
+swift upload Chinaskill /opt/images/centos7_5.qcow2 --segment-size 10M
+</code></pre>
+<h2 id="【题目】镜像的运维"><a href="#【题目】镜像的运维" class="headerlink" title="【题目】镜像的运维"></a>【题目】镜像的运维</h2><blockquote>
+<p>根据上题的云主机打快照，并保存为指定路径的文件</p>
+</blockquote>
+<pre><code class="shell">openstack server image create --name myInstanceSnapshot myInstance
+openstack image save --file snapshot.raw f30b204e-1ce6-40e7-b8d9-b353d4d84e7d
+</code></pre>
+<h2 id="【题目】openstack参数调优"><a href="#【题目】openstack参数调优" class="headerlink" title="【题目】openstack参数调优"></a>【题目】openstack参数调优</h2><pre><code class="shell">vi /etc/nova/nova.conf
+CPU: cpu_allocation_ratio = 4                            CPU超配比例是1:4
+RAM: ram_allocation_ratio = 1.0                            内存超配比例是1:1.0
+DISK: disk_allocation_ratio = 1.0                    磁盘超配比例是1:1.0
+RAM-Reserve: reserved_host_memory_mb = 2048        内存预留空间,这部分空间不能被虚拟机使用
+DISK-Reserve: reserved_host_disk_mb = 20480        磁盘预留空间,这部分空间不能被虚拟机使用
+</code></pre>
+<h2 id="【题目】mariadb参数调优"><a href="#【题目】mariadb参数调优" class="headerlink" title="【题目】mariadb参数调优"></a>【题目】mariadb参数调优</h2><blockquote>
+<p>修改最大最大连接数</p>
+</blockquote>
+<pre><code class="shell">法①set GLOBAL max_connections=256
+法②/etc/my.cnf.d/mariadb-server.cnf
+max_connections=128
+</code></pre>
+<h2 id="【题目】openstack角色权限管理"><a href="#【题目】openstack角色权限管理" class="headerlink" title="【题目】openstack角色权限管理"></a>【题目】openstack角色权限管理</h2><blockquote>
+<p>普通用户无法创建和删除虚拟机</p>
+</blockquote>
+<pre><code class="shell">vi /etc/nova/policy.json
+
+&quot;compute:create&quot;:&quot;rule:admin&quot;,
+&quot;compute:delete&quot;:&quot;rule:admin&quot;,
+
+一般格式：
+①&quot;行为名：规则&quot;: &quot;rule:用户权限&quot;
+②&quot;规则&quot;: &quot;rule:用户权限&quot;
+</code></pre>
+<h2 id="【题目】redis主从"><a href="#【题目】redis主从" class="headerlink" title="【题目】redis主从"></a>【题目】redis主从</h2><blockquote>
+<p>设置redis密码为123456 并配置主从</p>
+</blockquote>
+<h3 id="主从复制"><a href="#主从复制" class="headerlink" title="主从复制"></a>主从复制</h3><pre><code class="shell">vi /etc/redis.conf
+
+master:
+bind 0.0.0.0
+requirepass 123456
+
+node:
+bind 0.0.0.0
+requirepass 123456                
+replicaof 192.168.34.77 6379
+masterauth 123456
+
+redis-server /etc/redis.conf
+</code></pre>
+<h3 id="哨兵模式"><a href="#哨兵模式" class="headerlink" title="哨兵模式"></a>哨兵模式</h3><pre><code class="shell">node:
+vi /etc/redis.conf
+sentinel monitor mymaster 192.168.34.77   6379   1
+sentinel down-after-milliseconds mymaster 30000
+sentinel auth-pass mymaster 123456
+
+redis-sentinel /etc/sentinel.conf
+</code></pre>
+]]></content>
+      <categories>
+        <category>云计算</category>
+      </categories>
+      <tags>
+        <tag>云计算</tag>
+        <tag>openstack</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>Python爬虫-Xpath模块</title>
+    <url>/2020/03/08/python-reptile-xpath/</url>
+    <content><![CDATA[<h3 id="安装Requests模块"><a href="#安装Requests模块" class="headerlink" title="安装Requests模块"></a>安装Requests模块</h3><pre><code class="Cmd">pip install lxml
+</code></pre>
+<h3 id="Xpath表达式规则"><a href="#Xpath表达式规则" class="headerlink" title="Xpath表达式规则"></a>Xpath表达式规则</h3><table>
+<thead>
+<tr>
+<th>普通字符</th>
+<th>正则匹配</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>/</td>
+<td>逐层提取</td>
+</tr>
+<tr>
+<td>text()</td>
+<td>提取标签下面的文本</td>
+</tr>
+<tr>
+<td>//标签名**</td>
+<td>提取所有名为**的标签</td>
+</tr>
+<tr>
+<td>//标签名[@属性=’属性值’]</td>
+<td>提取属性为xx的标签</td>
+</tr>
+<tr>
+<td>@属性名</td>
+<td>代表取某个属性值</td>
+</tr>
+</tbody></table>
+<h3 id="小案例-匹配豆瓣影视介绍"><a href="#小案例-匹配豆瓣影视介绍" class="headerlink" title="小案例-匹配豆瓣影视介绍"></a>小案例-匹配豆瓣影视介绍</h3><pre><code class="Python"># 导入包
+import requests
+from lxml import etree
+
+# 构造url,user-agent请求头参数部分
+ua = &#123;
+    &#39;User-Agent&#39; : &#39;Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/80.0.3987.132 Safari/537.36&#39;
+&#125;
+url = &#39;https://movie.douban.com/subject/25887288/&#39;
+
+# 向指定的url发送get含有参数的请求
+response = requests.get(url,headers=ua)
+
+# 返回网站对象
+res = response.text
+# 生成选择器对象
+html = etree.HTML(res)
+# 匹配对象
+pat = &#39;//span[@property=&quot;v:summary&quot;]/text()&#39;
+# 匹配
+data = html.xpath(pat)
+# 遍历数组
+for i in data:
+    #处理空格
+    result = i.strip()
+    print(result)
+</code></pre>
+]]></content>
+      <categories>
+        <category>Python</category>
+      </categories>
+      <tags>
+        <tag>Python爬虫</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>Python爬虫-多线程多进程</title>
+    <url>/2021/03/06/python-thread&amp;threading/</url>
+    <content><![CDATA[<p><strong>线程进程协程关系与创建  –&gt; 重要 –&gt; 阿里面试时被问到</strong></p>
+<ol>
+<li>进程：一个运行的程序（代码）就是一个进程，没有运行的代码叫程序，进程是系统资源分配的最小单位，进程拥有自己独立的内存空间，所有进程间数据不共享，开销大。</li>
+<li>线程: cpu调度执行的最小单位，也叫执行路径，不能独立存在，依赖进程存在，一个进程至少有一个线程，叫主线程，而多个线程共享内存（数据共享，共享全局变量),从而极大地提高了程序的运行效率。</li>
+<li>协程: 是一种用户态的轻量级线程，协程的调度完全由用户控制。协程拥有自己的寄存器上下文和栈。协程调度时，将寄存器上下文和栈保存到其他地方，在切回来的时候，恢复先前保存的寄存器上下文和栈，直接操中栈则基本没有内核切换的开销，可以不加锁的访问全局变量，所以上下文的切换非常快。</li>
+</ol>
+<ul>
+<li>协程和线程一样共享堆，不共享栈</li>
+<li>协程和线程的区别是：协程避免了无意义的调度，由此可以提高性能;同时，协程也失去了标准线程使用多CPU的能力</li>
+</ul>
+<p><img src="https://i.loli.net/2021/05/12/6D9SRkdWaeQxNXM.jpg" alt="进程和线程的关系"></p>
+<h3 id="thread-多线程"><a href="#thread-多线程" class="headerlink" title="_thread 多线程"></a>_thread 多线程</h3><pre><code class="Python"># 导入包
+import _thread
+import time
+
+
+# 为线程定义一个函数
+def print_time(threadName, delay):
+    count = 0
+    while count &lt; 5:
+        time.sleep(delay)
+        count += 1
+        print(&quot;%s: %s&quot; % (threadName, time.ctime(time.time())))
+
+
+# 创建两个线程
+try:
+    # 创建线程 thread.start_new_thread(function, args[, kwargs])
+    _thread.start_new_thread(print_time, (&quot;Thread-1&quot;, 2,))
+    _thread.start_new_thread(print_time, (&quot;Thread-2&quot;, 4,))
+except:
+    print(&quot;Error: 无法启动线程&quot;)
+
+# 主线程等待，否则直接退出
+while 1:
+    pass
+</code></pre>
+<h3 id="threading-多线程"><a href="#threading-多线程" class="headerlink" title="threading 多线程"></a>threading 多线程</h3><pre><code class="Python"># 导入包
+import threading
+import time
+
+exitFlag = 0
+
+
+# 继承父类threading.Thread
+class myThread(threading.Thread):
+    def __init__(self, threadID, name, counter):
+        threading.Thread.__init__(self)
+        self.threadID = threadID
+        self.name = name
+        self.counter = counter
+
+    # 把要执行的代码写到run函数里面 线程在创建后会直接运行run函数
+    def run(self):
+        print(&quot;开始线程：&quot; + self.name)
+        print_time(self.name, self.counter, 5)
+        print(&quot;退出线程：&quot; + self.name)
+
+
+def print_time(threadName, delay, counter):
+    while counter:
+        if exitFlag:
+            print(exitFlag)
+            threadName.exit()
+        time.sleep(delay)
+        print(&quot;%s: %s&quot; % (threadName, time.ctime(time.time())))
+        counter -= 1
+
+
+# 创建新线程
+thread1 = myThread(1, &quot;Thread-1&quot;, 1)
+thread2 = myThread(2, &quot;Thread-2&quot;, 2)
+
+# 开启新线程
+thread1.start()
+thread2.start()
+thread1.join()
+thread2.join()
+print(&quot;退出主线程&quot;)
+</code></pre>
+<h3 id="threading-多线程同步"><a href="#threading-多线程同步" class="headerlink" title="threading 多线程同步"></a>threading 多线程同步</h3><pre><code class="Python"># 导入包
+import threading
+import time
+
+
+class myThread(threading.Thread):
+    def __init__(self, threadID, name, counter):
+        threading.Thread.__init__(self)
+        self.threadID = threadID
+        self.name = name
+        self.counter = counter
+
+    def run(self):
+        print(&quot;开启线程： &quot; + self.name)
+        # 获取锁，用于线程同步
+        threadLock.acquire()
+        print_time(self.name, self.counter, 3)
+        # 释放锁，开启下一个线程
+        threadLock.release()
+
+
+def print_time(threadName, delay, counter):
+    while counter:
+        time.sleep(delay)
+        print(&quot;%s: %s&quot; % (threadName, time.ctime(time.time())))
+        counter -= 1
+
+
+threadLock = threading.Lock()
+threads = []
+
+# 创建新线程
+thread1 = myThread(1, &quot;Thread-1&quot;, 1)
+thread2 = myThread(2, &quot;Thread-2&quot;, 2)
+
+# 开启新线程
+thread1.start()
+thread2.start()
+
+# 添加线程到线程列表
+threads.append(thread1)
+threads.append(thread2)
+
+# 等待所有线程完成
+for t in threads:
+    t.join()
+print(&quot;退出主线程&quot;)
+</code></pre>
+<h3 id="Queue线程优先级队列"><a href="#Queue线程优先级队列" class="headerlink" title="Queue线程优先级队列"></a>Queue线程优先级队列</h3><ul>
+<li>Queue.qsize () 返回队列的大小</li>
+<li>Queue.empty () 如果队列为空，返回 True, 反之 False</li>
+<li>Queue.full () 如果队列满了，返回 True, 反之 False</li>
+<li>Queue.full 与 maxsize 大小对应</li>
+<li>Queue.get ([block [, timeout]]) 获取队列，timeout 等待时间</li>
+<li>Queue.get_nowait () 相当 Queue.get (False)</li>
+<li>Queue.put (item) 写入队列，timeout 等待时间</li>
+<li>Queue.put_nowait (item) 相当 Queue.put (item, False)</li>
+<li>Queue.task_done () 在完成一项工作之后，Queue.task_done () 函数向任务已经完成的队列发送一个信号</li>
+<li>Queue.join () 实际上意味着等到队列为空，再执行别的操作</li>
+</ul>
+<pre><code class="python">import queue
+import threading
+import time
+
+exitFlag = 0
+
+
+class myThread(threading.Thread):
+    def __init__(self, threadID, name, q):
+        threading.Thread.__init__(self)
+        self.threadID = threadID
+        self.name = name
+        self.q = q
+
+    def run(self):
+        print(&quot;开启线程：&quot; + self.name)
+        process_data(self.name, self.q)
+        print(&quot;退出线程：&quot; + self.name)
+
+
+def process_data(threadName, q):
+    while not exitFlag:
+        queueLock.acquire()
+        if not workQueue.empty():
+            data = q.get()
+            queueLock.release()
+            print(&quot;%s processing %s&quot; % (threadName, data))
+        else:
+            queueLock.release()
+        time.sleep(1)
+
+
+threadList = [&quot;Thread-1&quot;, &quot;Thread-2&quot;, &quot;Thread-3&quot;]
+nameList = [&quot;One&quot;, &quot;Two&quot;, &quot;Three&quot;, &quot;Four&quot;, &quot;Five&quot;]
+queueLock = threading.Lock()
+workQueue = queue.Queue(10)
+threads = []
+threadID = 1
+
+# 创建新线程
+for tName in threadList:
+    thread = myThread(threadID, tName, workQueue)
+    thread.start()
+    threads.append(thread)
+    threadID += 1
+
+# 填充队列
+queueLock.acquire()
+for word in nameList:
+    workQueue.put(word)
+queueLock.release()
+
+# 等待队列清空
+while not workQueue.empty():
+    pass
+
+# 通知线程是时候退出
+exitFlag = 1
+
+# 等待所有线程完成
+for t in threads:
+    t.join()
+print(&quot;退出主线程&quot;)
+</code></pre>
+]]></content>
+      <categories>
+        <category>Python</category>
+      </categories>
+      <tags>
+        <tag>Python爬虫</tag>
+      </tags>
+  </entry>
+</search>

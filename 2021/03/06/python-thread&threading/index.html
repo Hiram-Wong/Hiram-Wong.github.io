@@ -1,0 +1,601 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  
+  <title>Python爬虫-多线程多进程 | Hiram&#39;s Blog</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <meta name="description" content="线程进程协程关系与创建  –&gt; 重要 –&gt; 阿里面试时被问到  进程：一个运行的程序（代码）就是一个进程，没有运行的代码叫程序，进程是系统资源分配的最小单位，进程拥有自己独立的内存空间，所有进程间数据不共享，开销大。 线程: cpu调度执行的最小单位，也叫执行路径，不能独立存在，依赖进程存在，一个进程至少有一个线程，叫主线程，而多个线程共享内存（数据共享，共享全局变量),从而极大地提高">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Python爬虫-多线程多进程">
+<meta property="og:url" content="https://hiram-wong.github.io/2021/03/06/python-thread&threading/index.html">
+<meta property="og:site_name" content="Hiram&#39;s Blog">
+<meta property="og:description" content="线程进程协程关系与创建  –&gt; 重要 –&gt; 阿里面试时被问到  进程：一个运行的程序（代码）就是一个进程，没有运行的代码叫程序，进程是系统资源分配的最小单位，进程拥有自己独立的内存空间，所有进程间数据不共享，开销大。 线程: cpu调度执行的最小单位，也叫执行路径，不能独立存在，依赖进程存在，一个进程至少有一个线程，叫主线程，而多个线程共享内存（数据共享，共享全局变量),从而极大地提高">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://i.loli.net/2021/05/12/6D9SRkdWaeQxNXM.jpg">
+<meta property="article:published_time" content="2021-03-06T06:55:00.000Z">
+<meta property="article:modified_time" content="2021-05-12T12:38:21.720Z">
+<meta property="article:author" content="HiramWong">
+<meta property="article:tag" content="Python爬虫">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://i.loli.net/2021/05/12/6D9SRkdWaeQxNXM.jpg">
+  
+    <link rel="icon" href="/images/favicon.ico">
+  
+  <!-- font-awesome -->
+  <link href="//cdn.bootcdn.net/ajax/libs/font-awesome/5.15.3/css/all.min.css" rel="stylesheet">
+  <script src="https://cdn.bootcdn.net/ajax/libs/font-awesome/5.15.3/js/all.js"></script>
+  <!-- jQuery -->
+  <script src="//cdn.bootcdn.net/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+  <!-- valine评论 -->
+  
+    <script src="//cdn1.lncld.net/static/js/3.0.4/av-min.js"></script>
+    <script src='//unpkg.com/valine/dist/Valine.min.js'></script>
+  
+  <!-- 代码高亮库 -->
+  <!-- <link href="//cdn.bootcdn.net/ajax/libs/highlight.js/11.0.1/styles/atom-one-dark.min.css" rel="stylesheet"> -->
+  <script src="//cdn.bootcdn.net/ajax/libs/highlight.js/11.0.1/highlight.min.js"></script>
+  <!-- <script src="//cdn.bootcdn.net/ajax/libs/highlightjs-line-numbers.js/2.8.0/highlightjs-line-numbers.min.js"></script> -->
+
+  
+<link rel="stylesheet" href="/css/highlight.css">
+
+  <script >
+  hljs.highlightAll()
+</script>
+  
+<link rel="stylesheet" href="/css/index.css">
+
+<meta name="generator" content="Hexo 5.4.0"></head>
+
+<body style="
+
+
+  background-color: #eff0f6
+
+">
+  <div id="container">
+    <nav id="nav">
+  <header class="header">
+    <a href="/" class="title">
+      Hiram&#39;s Blog
+    </a>
+  </header>
+  <div class="ctnWrap">
+    <div class="icons">
+      
+        
+          
+          
+          <a href="https://dribbble.com/clovertuan" target="_blank" class="nav-icn">
+            <i class="fab fa-dribbble"></i>
+          </a>
+          
+        
+          
+          
+          <a href="https://www.behance.net/clovertuan" target="_blank" class="nav-icn">
+            <i class="fab fa-behance"></i>
+          </a>
+          
+        
+          
+          
+          <a href="https://www.instagram.com/clovertuan" target="_blank" class="nav-icn">
+            <i class="fab fa-instagram"></i>
+          </a>
+          
+        
+          
+          
+          <a href="https://github.com/Hiram-Wong" target="_blank" class="nav-icn">
+            <i class="fab fa-github"></i>
+          </a>
+          
+        
+      
+      <span id="search">
+        <i class="fas fa-search"></i>
+      </span>
+      <style>
+        .search-active .search-pop-overlay {
+          background: rgba(0,0,0,0.3);
+          visibility: visible;
+        }
+        .search-pop-overlay {
+          background: rgba(0,0,0,0);
+          display: flex;
+          height: 100%;
+          left: 0;
+          position: fixed;
+          top: 0;
+          transition: visibility 0.4s, background 0.4s;
+          visibility: hidden;
+          width: 100%;
+          z-index: 1400;
+        }
+        .search-popup {
+          background: #f5f5f5;
+          border-radius: 5px;
+          height: 80%;
+          margin: auto;
+          transform: scale(0);
+          transition: transform 0.4s;
+          width: 700px;
+        }
+        .search-popup .search-header {
+          background: #eee;
+          border-top-left-radius: 5px;
+          border-top-right-radius: 5px;
+          display: flex;
+          padding: 5px;
+          line-height: 2;
+        }
+        .search-popup .search-icon, .search-popup .popup-btn-close {
+          color: #999;
+          font-size: 18px;
+          padding: 0 10px;
+        }
+        .search-popup .search-input-container {
+          flex-grow: 1;
+          padding: 2px;
+        }
+        .search-popup input.search-input {
+          background: transparent;
+          border: 0;
+          outline: 0;
+          width: 100%;
+        }
+        input {
+          font-family: inherit;
+          font-size: 100%;
+          line-height: 1.15;
+          margin: 0;
+        }
+        [type='search'] {
+          outline-offset: -2px;
+          -webkit-appearance: textfield;
+        }
+        .search-popup .popup-btn-close {
+          cursor: pointer;
+        }
+        .search-popup .search-icon, .search-popup .popup-btn-close {
+          color: #999;
+          font-size: 18px;
+          padding: 0 10px;
+        }
+        .search-popup .no-result {
+            display: flex;
+        }
+        .search-popup .search-result-container {
+            height: calc(100% - 55px);
+            overflow: auto;
+            padding: 5px 25px;
+        }
+        .search-popup .search-result-icon {
+            color: #ccc;
+            margin: auto;
+        }
+        hr {
+          background-image: repeating-linear-gradient(-45deg, #ddd, #ddd 4px, transparent 4px, transparent 8px);
+          border: 0;
+          height: 3px;
+          margin: 40px 0;
+        }
+        .search-popup .no-result {
+          display: flex;
+        }
+        .search-popup .search-result-container hr {
+          margin: 5px 0 10px;
+        }
+        .search-popup .search-result-list {
+          width: 100%;
+        }
+        .search-popup .search-result-list {
+          margin: 0 5px;
+          padding: 0;
+        }
+        .search-popup p.search-result {
+          border-bottom: 1px dashed #ccc;
+          padding: 5px 0;
+          white-space:nowrap;
+          overflow:hidden;
+          text-overflow:ellipsis;
+        }
+        .search-result em {
+          background: transparent;
+          border-bottom: 1px dashed #ff2a2a;
+          color: #ff2a2a;
+          font-weight: bold;
+        }
+        .search-popup a.search-result-title {
+          font-weight: bold;
+        }
+        .search-popup a {
+          border-bottom: 1px solid #999;
+          color: #555;
+          cursor: pointer;
+          outline: 0;
+          text-decoration: none;
+          overflow-wrap: break-word;
+        }
+      </style>
+      
+      <div class="search-pop-overlay">
+        <div class="popup search-popup">
+          <div class="search-header">
+            <span class="search-icon">
+              <i class="fa fa-search"></i>
+            </span>
+            <div class="search-input-container">
+              <input autocomplete="off" autocapitalize="off" maxlength="80" placeholder="Searching..." spellcheck="false" type="search" class="search-input" id="local-search-input" >
+              <!-- <input type="search" id="local-search-input" name="s" placeholder="请输入搜索的关键字" class="search-input"> -->
+            </div>
+            <span class="popup-btn-close" role="button">
+              <i class="fa fa-times-circle"></i>
+            </span>
+          </div>
+          <div class="search-result-container no-result"id="local-search-result">
+            <!-- <div class="search-stats">48 results found</div> -->
+            <!-- <hr> -->
+            <div class="search-result-icon">
+              <i class="fa fa-search fa-5x"></i>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div id="local-search1">
+        <!-- <input type="search" id="local-search-input" name="s" placeholder="请输入搜索的关键字" class="search-input">
+        <div id="local-search-result"></div> -->
+        
+<script src="/js/search.js"></script>
+
+        <script type="text/javascript">      
+          var search_path = "search.xml";
+          if (search_path.length == 0) {
+            search_path = "search.xml";
+          }
+          var path = "/" + search_path;
+          searchFunc(path, 'local-search-input', 'local-search-result');
+        </script>
+      </div>
+      <script>
+      </script>
+    </div>
+    <div class="menu">
+      
+        
+          <a href="/" class="nav-menu ">
+            HOME
+          </a>
+          
+        
+          <a href="/archives" class="nav-menu ">
+            ARCHIVE
+          </a>
+          
+        
+          <a href="/categories" class="nav-menu ">
+            CATEGORIES
+          </a>
+          
+        
+          <a href="/tags" class="nav-menu ">
+            TAGS
+          </a>
+          
+        
+          <a href="/links" class="nav-menu ">
+            LINKS
+          </a>
+          
+        
+          <a href="/about" class="nav-menu ">
+            ABOUT
+          </a>
+          
+        
+      
+    </div>
+  </div>
+</nav>
+    <div id="main"><section class="article">
+  <h2 class="title">
+    Python爬虫-多线程多进程
+  </h2>
+  <p class="sub">
+    3月 6, 2021
+  </p>
+  <article class="content">
+    <p><strong>线程进程协程关系与创建  –&gt; 重要 –&gt; 阿里面试时被问到</strong></p>
+<ol>
+<li>进程：一个运行的程序（代码）就是一个进程，没有运行的代码叫程序，进程是系统资源分配的最小单位，进程拥有自己独立的内存空间，所有进程间数据不共享，开销大。</li>
+<li>线程: cpu调度执行的最小单位，也叫执行路径，不能独立存在，依赖进程存在，一个进程至少有一个线程，叫主线程，而多个线程共享内存（数据共享，共享全局变量),从而极大地提高了程序的运行效率。</li>
+<li>协程: 是一种用户态的轻量级线程，协程的调度完全由用户控制。协程拥有自己的寄存器上下文和栈。协程调度时，将寄存器上下文和栈保存到其他地方，在切回来的时候，恢复先前保存的寄存器上下文和栈，直接操中栈则基本没有内核切换的开销，可以不加锁的访问全局变量，所以上下文的切换非常快。</li>
+</ol>
+<ul>
+<li>协程和线程一样共享堆，不共享栈</li>
+<li>协程和线程的区别是：协程避免了无意义的调度，由此可以提高性能;同时，协程也失去了标准线程使用多CPU的能力</li>
+</ul>
+<p><img src="https://i.loli.net/2021/05/12/6D9SRkdWaeQxNXM.jpg" alt="进程和线程的关系"></p>
+<h3 id="thread-多线程"><a href="#thread-多线程" class="headerlink" title="_thread 多线程"></a>_thread 多线程</h3><pre><code class="Python"># 导入包
+import _thread
+import time
+
+
+# 为线程定义一个函数
+def print_time(threadName, delay):
+    count = 0
+    while count &lt; 5:
+        time.sleep(delay)
+        count += 1
+        print(&quot;%s: %s&quot; % (threadName, time.ctime(time.time())))
+
+
+# 创建两个线程
+try:
+    # 创建线程 thread.start_new_thread(function, args[, kwargs])
+    _thread.start_new_thread(print_time, (&quot;Thread-1&quot;, 2,))
+    _thread.start_new_thread(print_time, (&quot;Thread-2&quot;, 4,))
+except:
+    print(&quot;Error: 无法启动线程&quot;)
+
+# 主线程等待，否则直接退出
+while 1:
+    pass
+</code></pre>
+<h3 id="threading-多线程"><a href="#threading-多线程" class="headerlink" title="threading 多线程"></a>threading 多线程</h3><pre><code class="Python"># 导入包
+import threading
+import time
+
+exitFlag = 0
+
+
+# 继承父类threading.Thread
+class myThread(threading.Thread):
+    def __init__(self, threadID, name, counter):
+        threading.Thread.__init__(self)
+        self.threadID = threadID
+        self.name = name
+        self.counter = counter
+
+    # 把要执行的代码写到run函数里面 线程在创建后会直接运行run函数
+    def run(self):
+        print(&quot;开始线程：&quot; + self.name)
+        print_time(self.name, self.counter, 5)
+        print(&quot;退出线程：&quot; + self.name)
+
+
+def print_time(threadName, delay, counter):
+    while counter:
+        if exitFlag:
+            print(exitFlag)
+            threadName.exit()
+        time.sleep(delay)
+        print(&quot;%s: %s&quot; % (threadName, time.ctime(time.time())))
+        counter -= 1
+
+
+# 创建新线程
+thread1 = myThread(1, &quot;Thread-1&quot;, 1)
+thread2 = myThread(2, &quot;Thread-2&quot;, 2)
+
+# 开启新线程
+thread1.start()
+thread2.start()
+thread1.join()
+thread2.join()
+print(&quot;退出主线程&quot;)
+</code></pre>
+<h3 id="threading-多线程同步"><a href="#threading-多线程同步" class="headerlink" title="threading 多线程同步"></a>threading 多线程同步</h3><pre><code class="Python"># 导入包
+import threading
+import time
+
+
+class myThread(threading.Thread):
+    def __init__(self, threadID, name, counter):
+        threading.Thread.__init__(self)
+        self.threadID = threadID
+        self.name = name
+        self.counter = counter
+
+    def run(self):
+        print(&quot;开启线程： &quot; + self.name)
+        # 获取锁，用于线程同步
+        threadLock.acquire()
+        print_time(self.name, self.counter, 3)
+        # 释放锁，开启下一个线程
+        threadLock.release()
+
+
+def print_time(threadName, delay, counter):
+    while counter:
+        time.sleep(delay)
+        print(&quot;%s: %s&quot; % (threadName, time.ctime(time.time())))
+        counter -= 1
+
+
+threadLock = threading.Lock()
+threads = []
+
+# 创建新线程
+thread1 = myThread(1, &quot;Thread-1&quot;, 1)
+thread2 = myThread(2, &quot;Thread-2&quot;, 2)
+
+# 开启新线程
+thread1.start()
+thread2.start()
+
+# 添加线程到线程列表
+threads.append(thread1)
+threads.append(thread2)
+
+# 等待所有线程完成
+for t in threads:
+    t.join()
+print(&quot;退出主线程&quot;)
+</code></pre>
+<h3 id="Queue线程优先级队列"><a href="#Queue线程优先级队列" class="headerlink" title="Queue线程优先级队列"></a>Queue线程优先级队列</h3><ul>
+<li>Queue.qsize () 返回队列的大小</li>
+<li>Queue.empty () 如果队列为空，返回 True, 反之 False</li>
+<li>Queue.full () 如果队列满了，返回 True, 反之 False</li>
+<li>Queue.full 与 maxsize 大小对应</li>
+<li>Queue.get ([block [, timeout]]) 获取队列，timeout 等待时间</li>
+<li>Queue.get_nowait () 相当 Queue.get (False)</li>
+<li>Queue.put (item) 写入队列，timeout 等待时间</li>
+<li>Queue.put_nowait (item) 相当 Queue.put (item, False)</li>
+<li>Queue.task_done () 在完成一项工作之后，Queue.task_done () 函数向任务已经完成的队列发送一个信号</li>
+<li>Queue.join () 实际上意味着等到队列为空，再执行别的操作</li>
+</ul>
+<pre><code class="python">import queue
+import threading
+import time
+
+exitFlag = 0
+
+
+class myThread(threading.Thread):
+    def __init__(self, threadID, name, q):
+        threading.Thread.__init__(self)
+        self.threadID = threadID
+        self.name = name
+        self.q = q
+
+    def run(self):
+        print(&quot;开启线程：&quot; + self.name)
+        process_data(self.name, self.q)
+        print(&quot;退出线程：&quot; + self.name)
+
+
+def process_data(threadName, q):
+    while not exitFlag:
+        queueLock.acquire()
+        if not workQueue.empty():
+            data = q.get()
+            queueLock.release()
+            print(&quot;%s processing %s&quot; % (threadName, data))
+        else:
+            queueLock.release()
+        time.sleep(1)
+
+
+threadList = [&quot;Thread-1&quot;, &quot;Thread-2&quot;, &quot;Thread-3&quot;]
+nameList = [&quot;One&quot;, &quot;Two&quot;, &quot;Three&quot;, &quot;Four&quot;, &quot;Five&quot;]
+queueLock = threading.Lock()
+workQueue = queue.Queue(10)
+threads = []
+threadID = 1
+
+# 创建新线程
+for tName in threadList:
+    thread = myThread(threadID, tName, workQueue)
+    thread.start()
+    threads.append(thread)
+    threadID += 1
+
+# 填充队列
+queueLock.acquire()
+for word in nameList:
+    workQueue.put(word)
+queueLock.release()
+
+# 等待队列清空
+while not workQueue.empty():
+    pass
+
+# 通知线程是时候退出
+exitFlag = 1
+
+# 等待所有线程完成
+for t in threads:
+    t.join()
+print(&quot;退出主线程&quot;)
+</code></pre>
+
+  </article>
+  <div class="Last-Next">
+    
+      <a href="/2021/05/11/cloudcomping-private-1/">
+        <div class="last">
+          <span>上一篇</span>
+          <p>
+            云计算赛项-私有云笔记一（基础运维）
+          </p>
+        </div>
+      </a>
+      
+
+    
+      <a href="/2020/08/30/development-cloudcloud-serverless-development-stall/">
+        <div class="next">
+          <span>下一篇</span>
+          <p>
+            Serverless Web云开发
+          </p>
+        </div>
+      </a>
+      
+  </div>
+</section>
+
+<section class="article">
+  
+    <div id="vcomments"></div>
+    
+</section></div>
+    <footer id="footer" class="f-cf">
+  <div class="left">
+    <span>© 2021 Hiram&#39;s Blog.</span>
+    <span>Theme by Clover 2.0</span>
+  </div>
+
+  <div class="right">
+    
+      <p id="hitokoto"><a href="#" id="hitokoto_text">:D 获取中...</a></p>
+      <script>
+        var xhr = new XMLHttpRequest();
+        xhr.open('get', '//v1.hitokoto.cn');
+        xhr.onreadystatechange = function () {
+          if (xhr.readyState === 4) {
+            var data = JSON.parse(xhr.responseText);
+            var hitokoto = document.getElementById('hitokoto_text');
+            hitokoto.href = '//hitokoto.cn/?uuid=' + data.uuid
+            hitokoto.innerText = data.hitokoto;
+          }
+        }
+        xhr.send();
+      </script>
+    
+  </div>
+</footer>
+
+
+<script src="/js/gotop.js"></script>
+
+
+<div class="goTop" id="js-go_top">
+	<span>
+		<i class="fas fa-angle-up"></i>
+	</span>
+</div>
+
+<script>
+	$('#js-go_top').gotoTop({ offset: 500, speed: 300, animationShow: { 'transform': 'translate(0,0)', 'transition': 'transform .5s ease-in-out' }, animationHide: { 'transform': 'translate(100px,0)', 'transition': 'transform .5s ease-in-out' } });
+</script>
+
+
+  <script>
+    new Valine({
+      el: '#vcomments',
+      appId: 'iXLhz5jeT2wFRfJCQAJ7V95C-gzGzoHsz',
+      appKey: 'BfEnKf3O35FL0MPe3gVObgvU',
+      placeholder: 'Your commnet here. Be cool.' || 'Your commnet here. Be cool.',
+      avatar: 'mp' || 'mp',
+      pageSize: '10' || 10,
+      visitor: 'true',
+    })
+  </script>
+
+  </div>
+</body>
+</html>

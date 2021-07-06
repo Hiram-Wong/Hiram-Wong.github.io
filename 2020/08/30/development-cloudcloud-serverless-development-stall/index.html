@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  
+  <title>Serverless Web云开发 | Hiram&#39;s Blog</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <meta name="description" content="地摊宝开发历程 项目背景由于今年疫情的原因，使得闲职人员多了起来。于是国家出台了法律法规给予支持，“地摊经济”也成为了最大的黑马。地摊经济门槛低，体量大，促就业，国家现在也在大力倡导，推动社会经济发展地摊经济”允许“夜市、地摊”的重现显然是更接近振兴实体经济业态的一种方式。 方案设计目标市场闲职人员、摊位出租者 目标市场的现状从3月15日出台新规允许设置临时占道摊点、允许临街店铺越门经营、允许大型">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Serverless Web云开发">
+<meta property="og:url" content="https://hiram-wong.github.io/2020/08/30/development-cloudcloud-serverless-development-stall/index.html">
+<meta property="og:site_name" content="Hiram&#39;s Blog">
+<meta property="og:description" content="地摊宝开发历程 项目背景由于今年疫情的原因，使得闲职人员多了起来。于是国家出台了法律法规给予支持，“地摊经济”也成为了最大的黑马。地摊经济门槛低，体量大，促就业，国家现在也在大力倡导，推动社会经济发展地摊经济”允许“夜市、地摊”的重现显然是更接近振兴实体经济业态的一种方式。 方案设计目标市场闲职人员、摊位出租者 目标市场的现状从3月15日出台新规允许设置临时占道摊点、允许临街店铺越门经营、允许大型">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://img.alicdn.com/tfs/TB1qnvCOAY2gK0jSZFgXXc5OFXa-2880-700.jpg">
+<meta property="og:image" content="https://ae01.alicdn.com/kf/Ub5f68f99a8fc4b7bae6c98f66ebf685aE.jpg">
+<meta property="og:image" content="https://ae01.alicdn.com/kf/U5f45f05790924a7d818d76850c5f1459O.jpg">
+<meta property="og:image" content="https://ae01.alicdn.com/kf/Uc4aaf06aff6e466e8d1bed25098f87e7T.jpg">
+<meta property="og:image" content="https://ae01.alicdn.com/kf/U7d1021044d40433a9717007eb502c201f.jpg">
+<meta property="og:image" content="https://ae01.alicdn.com/kf/U9226ed1a4c574491980329e140965681h.jpg">
+<meta property="og:image" content="https://ae01.alicdn.com/kf/U88ecb7f3fa4c47f98bdbed5fd0014112K.jpg">
+<meta property="og:image" content="https://ae01.alicdn.com/kf/U3c81462ff8f44c01bc1dbf8641afb396f.jpg">
+<meta property="og:image" content="https://ae01.alicdn.com/kf/U9efc5cee448448d3a53c332126a75d22r.jpg">
+<meta property="article:published_time" content="2020-08-30T07:05:39.000Z">
+<meta property="article:modified_time" content="2021-05-12T12:43:08.219Z">
+<meta property="article:author" content="HiramWong">
+<meta property="article:tag" content="云开发">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://img.alicdn.com/tfs/TB1qnvCOAY2gK0jSZFgXXc5OFXa-2880-700.jpg">
+  
+    <link rel="icon" href="/images/favicon.ico">
+  
+  <!-- font-awesome -->
+  <link href="//cdn.bootcdn.net/ajax/libs/font-awesome/5.15.3/css/all.min.css" rel="stylesheet">
+  <script src="https://cdn.bootcdn.net/ajax/libs/font-awesome/5.15.3/js/all.js"></script>
+  <!-- jQuery -->
+  <script src="//cdn.bootcdn.net/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+  <!-- valine评论 -->
+  
+    <script src="//cdn1.lncld.net/static/js/3.0.4/av-min.js"></script>
+    <script src='//unpkg.com/valine/dist/Valine.min.js'></script>
+  
+  <!-- 代码高亮库 -->
+  <!-- <link href="//cdn.bootcdn.net/ajax/libs/highlight.js/11.0.1/styles/atom-one-dark.min.css" rel="stylesheet"> -->
+  <script src="//cdn.bootcdn.net/ajax/libs/highlight.js/11.0.1/highlight.min.js"></script>
+  <!-- <script src="//cdn.bootcdn.net/ajax/libs/highlightjs-line-numbers.js/2.8.0/highlightjs-line-numbers.min.js"></script> -->
+
+  
+<link rel="stylesheet" href="/css/highlight.css">
+
+  <script >
+  hljs.highlightAll()
+</script>
+  
+<link rel="stylesheet" href="/css/index.css">
+
+<meta name="generator" content="Hexo 5.4.0"></head>
+
+<body style="
+
+
+  background-color: #eff0f6
+
+">
+  <div id="container">
+    <nav id="nav">
+  <header class="header">
+    <a href="/" class="title">
+      Hiram&#39;s Blog
+    </a>
+  </header>
+  <div class="ctnWrap">
+    <div class="icons">
+      
+        
+          
+          
+          <a href="https://dribbble.com/clovertuan" target="_blank" class="nav-icn">
+            <i class="fab fa-dribbble"></i>
+          </a>
+          
+        
+          
+          
+          <a href="https://www.behance.net/clovertuan" target="_blank" class="nav-icn">
+            <i class="fab fa-behance"></i>
+          </a>
+          
+        
+          
+          
+          <a href="https://www.instagram.com/clovertuan" target="_blank" class="nav-icn">
+            <i class="fab fa-instagram"></i>
+          </a>
+          
+        
+          
+          
+          <a href="https://github.com/Hiram-Wong" target="_blank" class="nav-icn">
+            <i class="fab fa-github"></i>
+          </a>
+          
+        
+      
+      <span id="search">
+        <i class="fas fa-search"></i>
+      </span>
+      <style>
+        .search-active .search-pop-overlay {
+          background: rgba(0,0,0,0.3);
+          visibility: visible;
+        }
+        .search-pop-overlay {
+          background: rgba(0,0,0,0);
+          display: flex;
+          height: 100%;
+          left: 0;
+          position: fixed;
+          top: 0;
+          transition: visibility 0.4s, background 0.4s;
+          visibility: hidden;
+          width: 100%;
+          z-index: 1400;
+        }
+        .search-popup {
+          background: #f5f5f5;
+          border-radius: 5px;
+          height: 80%;
+          margin: auto;
+          transform: scale(0);
+          transition: transform 0.4s;
+          width: 700px;
+        }
+        .search-popup .search-header {
+          background: #eee;
+          border-top-left-radius: 5px;
+          border-top-right-radius: 5px;
+          display: flex;
+          padding: 5px;
+          line-height: 2;
+        }
+        .search-popup .search-icon, .search-popup .popup-btn-close {
+          color: #999;
+          font-size: 18px;
+          padding: 0 10px;
+        }
+        .search-popup .search-input-container {
+          flex-grow: 1;
+          padding: 2px;
+        }
+        .search-popup input.search-input {
+          background: transparent;
+          border: 0;
+          outline: 0;
+          width: 100%;
+        }
+        input {
+          font-family: inherit;
+          font-size: 100%;
+          line-height: 1.15;
+          margin: 0;
+        }
+        [type='search'] {
+          outline-offset: -2px;
+          -webkit-appearance: textfield;
+        }
+        .search-popup .popup-btn-close {
+          cursor: pointer;
+        }
+        .search-popup .search-icon, .search-popup .popup-btn-close {
+          color: #999;
+          font-size: 18px;
+          padding: 0 10px;
+        }
+        .search-popup .no-result {
+            display: flex;
+        }
+        .search-popup .search-result-container {
+            height: calc(100% - 55px);
+            overflow: auto;
+            padding: 5px 25px;
+        }
+        .search-popup .search-result-icon {
+            color: #ccc;
+            margin: auto;
+        }
+        hr {
+          background-image: repeating-linear-gradient(-45deg, #ddd, #ddd 4px, transparent 4px, transparent 8px);
+          border: 0;
+          height: 3px;
+          margin: 40px 0;
+        }
+        .search-popup .no-result {
+          display: flex;
+        }
+        .search-popup .search-result-container hr {
+          margin: 5px 0 10px;
+        }
+        .search-popup .search-result-list {
+          width: 100%;
+        }
+        .search-popup .search-result-list {
+          margin: 0 5px;
+          padding: 0;
+        }
+        .search-popup p.search-result {
+          border-bottom: 1px dashed #ccc;
+          padding: 5px 0;
+          white-space:nowrap;
+          overflow:hidden;
+          text-overflow:ellipsis;
+        }
+        .search-result em {
+          background: transparent;
+          border-bottom: 1px dashed #ff2a2a;
+          color: #ff2a2a;
+          font-weight: bold;
+        }
+        .search-popup a.search-result-title {
+          font-weight: bold;
+        }
+        .search-popup a {
+          border-bottom: 1px solid #999;
+          color: #555;
+          cursor: pointer;
+          outline: 0;
+          text-decoration: none;
+          overflow-wrap: break-word;
+        }
+      </style>
+      
+      <div class="search-pop-overlay">
+        <div class="popup search-popup">
+          <div class="search-header">
+            <span class="search-icon">
+              <i class="fa fa-search"></i>
+            </span>
+            <div class="search-input-container">
+              <input autocomplete="off" autocapitalize="off" maxlength="80" placeholder="Searching..." spellcheck="false" type="search" class="search-input" id="local-search-input" >
+              <!-- <input type="search" id="local-search-input" name="s" placeholder="请输入搜索的关键字" class="search-input"> -->
+            </div>
+            <span class="popup-btn-close" role="button">
+              <i class="fa fa-times-circle"></i>
+            </span>
+          </div>
+          <div class="search-result-container no-result"id="local-search-result">
+            <!-- <div class="search-stats">48 results found</div> -->
+            <!-- <hr> -->
+            <div class="search-result-icon">
+              <i class="fa fa-search fa-5x"></i>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div id="local-search1">
+        <!-- <input type="search" id="local-search-input" name="s" placeholder="请输入搜索的关键字" class="search-input">
+        <div id="local-search-result"></div> -->
+        
+<script src="/js/search.js"></script>
+
+        <script type="text/javascript">      
+          var search_path = "search.xml";
+          if (search_path.length == 0) {
+            search_path = "search.xml";
+          }
+          var path = "/" + search_path;
+          searchFunc(path, 'local-search-input', 'local-search-result');
+        </script>
+      </div>
+      <script>
+      </script>
+    </div>
+    <div class="menu">
+      
+        
+          <a href="/" class="nav-menu ">
+            HOME
+          </a>
+          
+        
+          <a href="/archives" class="nav-menu ">
+            ARCHIVE
+          </a>
+          
+        
+          <a href="/categories" class="nav-menu ">
+            CATEGORIES
+          </a>
+          
+        
+          <a href="/tags" class="nav-menu ">
+            TAGS
+          </a>
+          
+        
+          <a href="/links" class="nav-menu ">
+            LINKS
+          </a>
+          
+        
+          <a href="/about" class="nav-menu ">
+            ABOUT
+          </a>
+          
+        
+      
+    </div>
+  </div>
+</nav>
+    <div id="main"><section class="article">
+  <h2 class="title">
+    Serverless Web云开发
+  </h2>
+  <p class="sub">
+    8月 30, 2020
+  </p>
+  <article class="content">
+    <h2 id="地摊宝开发历程"><a href="#地摊宝开发历程" class="headerlink" title="地摊宝开发历程"></a>地摊宝开发历程</h2><p><img src="https://img.alicdn.com/tfs/TB1qnvCOAY2gK0jSZFgXXc5OFXa-2880-700.jpg" alt="image.png"></p>
+<h3 id="项目背景"><a href="#项目背景" class="headerlink" title="项目背景"></a>项目背景</h3><p>由于今年疫情的原因，使得闲职人员多了起来。于是国家出台了法律法规给予支持，“地摊经济”也成为了最大的黑马。地摊经济门槛低，体量大，促就业，国家现在也在大力倡导，推动社会经济发展地摊经济”允许“夜市、地摊”的重现显然是更接近振兴实体经济业态的一种方式。</p>
+<h3 id="方案设计"><a href="#方案设计" class="headerlink" title="方案设计"></a>方案设计</h3><h4 id="目标市场"><a href="#目标市场" class="headerlink" title="目标市场"></a>目标市场</h4><p>闲职人员、摊位出租者</p>
+<h4 id="目标市场的现状"><a href="#目标市场的现状" class="headerlink" title="目标市场的现状"></a>目标市场的现状</h4><p>从3月15日出台新规允许设置临时占道摊点、允许临街店铺越门经营、允许大型商场开展占道促销等以来，截至5月28日，成都市设置临时占道摊点、摊区2230个，允许临时越门经营点位17147个，允许流动商贩经营点20130个，增加就业人数10万人以上，中心城区餐饮店铺复工率超过98%，实现了经济效益和社会效益双丰收。</p>
+<h4 id="项目定位"><a href="#项目定位" class="headerlink" title="项目定位"></a>项目定位</h4><p>地摊、地摊工具、地摊攻略、地摊生活资讯、网红地摊、助力新地摊经济、轻松找地摊，发现周围好摊位、摆地摊找资源，逛地摊淘尖货、拉上好友组队摆地摊、地摊经验交流的一个平台. </p>
+<h4 id="项目介绍"><a href="#项目介绍" class="headerlink" title="项目介绍"></a>项目介绍</h4><p>采用基于地理信息位置，基于网友提供身边可供摆摊的摊位信息收集的系统。网友同时也可对其摊位可信度进行投票，也可进行留言提供人流量，摊位大小，摊税等信息。</p>
+<p><img src="https://ae01.alicdn.com/kf/Ub5f68f99a8fc4b7bae6c98f66ebf685aE.jpg"></p>
+<p><img src="https://ae01.alicdn.com/kf/U5f45f05790924a7d818d76850c5f1459O.jpg"></p>
+<h3 id="项目开发"><a href="#项目开发" class="headerlink" title="项目开发"></a>项目开发</h3><p><img src="https://ae01.alicdn.com/kf/Uc4aaf06aff6e466e8d1bed25098f87e7T.jpg"></p>
+<p><img src="https://ae01.alicdn.com/kf/U7d1021044d40433a9717007eb502c201f.jpg"></p>
+<p><img src="https://ae01.alicdn.com/kf/U9226ed1a4c574491980329e140965681h.jpg"></p>
+<h3 id="踩坑记录"><a href="#踩坑记录" class="headerlink" title="踩坑记录"></a>踩坑记录</h3><blockquote>
+<p>Q：workbench云平台只内置Python环境，无内置pip环境</p>
+<p>A：</p>
+<ol>
+<li>wget <a target="_blank" rel="noopener" href="https://bootstrap.pypa.io/get-pip.py">https://bootstrap.pypa.io/get-pip.py</a></li>
+<li>python get-pip.py</li>
+</ol>
+<p>Q：本地开发使用的flask，遇到同时请求会报错，设置threaded，threaded 使用gevet 均无果</p>
+<p>A：使用time.sleep</p>
+<p>Q：workbench云平台pip安装第三方包，打包部署后访问报错找不到该包</p>
+<p>A：必须指定安装包的安装目录为该项目的根目录<code>pip install 包名 --target=路径</code></p>
+<p>Q：Python 对list.append 赋值为None</p>
+<p>A：list.append 无返回值，不能直接赋值</p>
+<p>Q：数据库使用阿里表格数据库tablestore不能直接返回所有数据</p>
+<p>A：最终直接放弃，改用Mysql，并且本地调试的时候余额欠费，好像挺贵的访问</p>
+<p>Q：Vue.js 使用高地地图 ，刚开始使用ip定位和直接定位来获取经纬度 但api只能范围市的范围的经纬度数组，这样会为后续绘制图形带来麻烦精度不够，后来想通过Get ipLocation定位，站点升级https结果还是由于浏览器定位失败</p>
+<p>A：使用百度地图 <code>vue-baidu-map</code>组件</p>
+<p>Q：百度地图绘制图像在pc端没有问题，手机端无法更改，而该项目是针对H5，百度无果</p>
+<p>A：采用csdn上某大佬自己写的方法实现</p>
+</blockquote>
+<h3 id="被攻击记录"><a href="#被攻击记录" class="headerlink" title="被攻击记录"></a>被攻击记录</h3><p>8月30日 早上被阿里电话打醒，说我已经欠费275，我靠，睡一觉一套房子没了？？？</p>
+<p><img src="https://ae01.alicdn.com/kf/U88ecb7f3fa4c47f98bdbed5fd0014112K.jpg"></p>
+<p><img src="https://ae01.alicdn.com/kf/U3c81462ff8f44c01bc1dbf8641afb396f.jpg"></p>
+<p>攻击大概是从29号晚上19：40分持续到30号早上一点左右，峰值请求数达到了14k、17G流量</p>
+<p>原本以为套了CDN（毕竟我还有1T的资源包）不会扣太多，</p>
+<p>结果太天真了，因为api网关是日计费，估摸29号晚上都是cdn在扛，部分流量直接走api网关直接访问了，30号cdn就因欠费停止服务，0-1点时间段就直接打到api网关上，产生了费用。难道我要向老罗去带货？</p>
+<p>@风驰老师让我做API网关设置限流策略和cdn加速文件的缓存时间</p>
+<p>然而目前只能在api网关上做限流[用的默认脚本]，cdn因为欠费无法设置，这这这，非常无奈。这笔款项不知道怎么处理了，本来想跑路的，大不了合伙人称号不要了</p>
+<p>结果朋友@朱永杰 说可能会影响蚂蚁积分，而蚂蚁信用是接入征信系统的，难搞哦。</p>
+<p>现在只能就这样挂着</p>
+<p><img src="https://ae01.alicdn.com/kf/U9efc5cee448448d3a53c332126a75d22r.jpg"></p>
+<ul>
+<li>友情提醒：参加活动有风险</li>
+</ul>
+<h3 id="最终结果"><a href="#最终结果" class="headerlink" title="最终结果"></a>最终结果</h3><blockquote>
+<p>入选训练营，并参加了阿里面试，却一问三不知，要学的东西还很多，加油，冲！！！</p>
+</blockquote>
+
+  </article>
+  <div class="Last-Next">
+    
+      <a href="/2021/03/06/python-thread&threading/">
+        <div class="last">
+          <span>上一篇</span>
+          <p>
+            Python爬虫-多线程多进程
+          </p>
+        </div>
+      </a>
+      
+
+    
+      <a href="/2020/08/06/development-cloudcloud-ecs7day/">
+        <div class="next">
+          <span>下一篇</span>
+          <p>
+            ECS 7天实践训练营
+          </p>
+        </div>
+      </a>
+      
+  </div>
+</section>
+
+<section class="article">
+  
+    <div id="vcomments"></div>
+    
+</section></div>
+    <footer id="footer" class="f-cf">
+  <div class="left">
+    <span>© 2021 Hiram&#39;s Blog.</span>
+    <span>Theme by Clover 2.0</span>
+  </div>
+
+  <div class="right">
+    
+      <p id="hitokoto"><a href="#" id="hitokoto_text">:D 获取中...</a></p>
+      <script>
+        var xhr = new XMLHttpRequest();
+        xhr.open('get', '//v1.hitokoto.cn');
+        xhr.onreadystatechange = function () {
+          if (xhr.readyState === 4) {
+            var data = JSON.parse(xhr.responseText);
+            var hitokoto = document.getElementById('hitokoto_text');
+            hitokoto.href = '//hitokoto.cn/?uuid=' + data.uuid
+            hitokoto.innerText = data.hitokoto;
+          }
+        }
+        xhr.send();
+      </script>
+    
+  </div>
+</footer>
+
+
+<script src="/js/gotop.js"></script>
+
+
+<div class="goTop" id="js-go_top">
+	<span>
+		<i class="fas fa-angle-up"></i>
+	</span>
+</div>
+
+<script>
+	$('#js-go_top').gotoTop({ offset: 500, speed: 300, animationShow: { 'transform': 'translate(0,0)', 'transition': 'transform .5s ease-in-out' }, animationHide: { 'transform': 'translate(100px,0)', 'transition': 'transform .5s ease-in-out' } });
+</script>
+
+
+  <script>
+    new Valine({
+      el: '#vcomments',
+      appId: 'iXLhz5jeT2wFRfJCQAJ7V95C-gzGzoHsz',
+      appKey: 'BfEnKf3O35FL0MPe3gVObgvU',
+      placeholder: 'Your commnet here. Be cool.' || 'Your commnet here. Be cool.',
+      avatar: 'mp' || 'mp',
+      pageSize: '10' || 10,
+      visitor: 'true',
+    })
+  </script>
+
+  </div>
+</body>
+</html>

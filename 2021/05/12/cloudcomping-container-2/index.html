@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  
+  <title>云计算-容器云笔记二（CICD集成） | Hiram&#39;s Blog</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <meta name="description" content="【题目 1】安装Jenkins 环境 在master 节点上使用镜像jenkins&#x2F;jenkins:2.262-centos 部署Jenkins 服务，具体要求如下：（1）容器名称：jenkins；（2）端口映射：8080:80； [题目错误 改为8080:8080]（3）使用root 身份生成容器；（4）离线安装Jenkins 插件；（5）设置Jenkins 用户：chinaskill；密码：0">
+<meta property="og:type" content="article">
+<meta property="og:title" content="云计算-容器云笔记二（CICD集成）">
+<meta property="og:url" content="https://hiram-wong.github.io/2021/05/12/cloudcomping-container-2/index.html">
+<meta property="og:site_name" content="Hiram&#39;s Blog">
+<meta property="og:description" content="【题目 1】安装Jenkins 环境 在master 节点上使用镜像jenkins&#x2F;jenkins:2.262-centos 部署Jenkins 服务，具体要求如下：（1）容器名称：jenkins；（2）端口映射：8080:80； [题目错误 改为8080:8080]（3）使用root 身份生成容器；（4）离线安装Jenkins 插件；（5）设置Jenkins 用户：chinaskill；密码：0">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2021-05-12T07:09:39.000Z">
+<meta property="article:modified_time" content="2021-05-12T12:06:54.167Z">
+<meta property="article:author" content="HiramWong">
+<meta property="article:tag" content="云计算">
+<meta property="article:tag" content="cicd">
+<meta name="twitter:card" content="summary">
+  
+    <link rel="icon" href="/images/favicon.ico">
+  
+  <!-- font-awesome -->
+  <link href="//cdn.bootcdn.net/ajax/libs/font-awesome/5.15.3/css/all.min.css" rel="stylesheet">
+  <script src="https://cdn.bootcdn.net/ajax/libs/font-awesome/5.15.3/js/all.js"></script>
+  <!-- jQuery -->
+  <script src="//cdn.bootcdn.net/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+  <!-- valine评论 -->
+  
+    <script src="//cdn1.lncld.net/static/js/3.0.4/av-min.js"></script>
+    <script src='//unpkg.com/valine/dist/Valine.min.js'></script>
+  
+  <!-- 代码高亮库 -->
+  <!-- <link href="//cdn.bootcdn.net/ajax/libs/highlight.js/11.0.1/styles/atom-one-dark.min.css" rel="stylesheet"> -->
+  <script src="//cdn.bootcdn.net/ajax/libs/highlight.js/11.0.1/highlight.min.js"></script>
+  <!-- <script src="//cdn.bootcdn.net/ajax/libs/highlightjs-line-numbers.js/2.8.0/highlightjs-line-numbers.min.js"></script> -->
+
+  
+<link rel="stylesheet" href="/css/highlight.css">
+
+  <script >
+  hljs.highlightAll()
+</script>
+  
+<link rel="stylesheet" href="/css/index.css">
+
+<meta name="generator" content="Hexo 5.4.0"></head>
+
+<body style="
+
+
+  background-color: #eff0f6
+
+">
+  <div id="container">
+    <nav id="nav">
+  <header class="header">
+    <a href="/" class="title">
+      Hiram&#39;s Blog
+    </a>
+  </header>
+  <div class="ctnWrap">
+    <div class="icons">
+      
+        
+          
+          
+          <a href="https://dribbble.com/clovertuan" target="_blank" class="nav-icn">
+            <i class="fab fa-dribbble"></i>
+          </a>
+          
+        
+          
+          
+          <a href="https://www.behance.net/clovertuan" target="_blank" class="nav-icn">
+            <i class="fab fa-behance"></i>
+          </a>
+          
+        
+          
+          
+          <a href="https://www.instagram.com/clovertuan" target="_blank" class="nav-icn">
+            <i class="fab fa-instagram"></i>
+          </a>
+          
+        
+          
+          
+          <a href="https://github.com/Hiram-Wong" target="_blank" class="nav-icn">
+            <i class="fab fa-github"></i>
+          </a>
+          
+        
+      
+      <span id="search">
+        <i class="fas fa-search"></i>
+      </span>
+      <style>
+        .search-active .search-pop-overlay {
+          background: rgba(0,0,0,0.3);
+          visibility: visible;
+        }
+        .search-pop-overlay {
+          background: rgba(0,0,0,0);
+          display: flex;
+          height: 100%;
+          left: 0;
+          position: fixed;
+          top: 0;
+          transition: visibility 0.4s, background 0.4s;
+          visibility: hidden;
+          width: 100%;
+          z-index: 1400;
+        }
+        .search-popup {
+          background: #f5f5f5;
+          border-radius: 5px;
+          height: 80%;
+          margin: auto;
+          transform: scale(0);
+          transition: transform 0.4s;
+          width: 700px;
+        }
+        .search-popup .search-header {
+          background: #eee;
+          border-top-left-radius: 5px;
+          border-top-right-radius: 5px;
+          display: flex;
+          padding: 5px;
+          line-height: 2;
+        }
+        .search-popup .search-icon, .search-popup .popup-btn-close {
+          color: #999;
+          font-size: 18px;
+          padding: 0 10px;
+        }
+        .search-popup .search-input-container {
+          flex-grow: 1;
+          padding: 2px;
+        }
+        .search-popup input.search-input {
+          background: transparent;
+          border: 0;
+          outline: 0;
+          width: 100%;
+        }
+        input {
+          font-family: inherit;
+          font-size: 100%;
+          line-height: 1.15;
+          margin: 0;
+        }
+        [type='search'] {
+          outline-offset: -2px;
+          -webkit-appearance: textfield;
+        }
+        .search-popup .popup-btn-close {
+          cursor: pointer;
+        }
+        .search-popup .search-icon, .search-popup .popup-btn-close {
+          color: #999;
+          font-size: 18px;
+          padding: 0 10px;
+        }
+        .search-popup .no-result {
+            display: flex;
+        }
+        .search-popup .search-result-container {
+            height: calc(100% - 55px);
+            overflow: auto;
+            padding: 5px 25px;
+        }
+        .search-popup .search-result-icon {
+            color: #ccc;
+            margin: auto;
+        }
+        hr {
+          background-image: repeating-linear-gradient(-45deg, #ddd, #ddd 4px, transparent 4px, transparent 8px);
+          border: 0;
+          height: 3px;
+          margin: 40px 0;
+        }
+        .search-popup .no-result {
+          display: flex;
+        }
+        .search-popup .search-result-container hr {
+          margin: 5px 0 10px;
+        }
+        .search-popup .search-result-list {
+          width: 100%;
+        }
+        .search-popup .search-result-list {
+          margin: 0 5px;
+          padding: 0;
+        }
+        .search-popup p.search-result {
+          border-bottom: 1px dashed #ccc;
+          padding: 5px 0;
+          white-space:nowrap;
+          overflow:hidden;
+          text-overflow:ellipsis;
+        }
+        .search-result em {
+          background: transparent;
+          border-bottom: 1px dashed #ff2a2a;
+          color: #ff2a2a;
+          font-weight: bold;
+        }
+        .search-popup a.search-result-title {
+          font-weight: bold;
+        }
+        .search-popup a {
+          border-bottom: 1px solid #999;
+          color: #555;
+          cursor: pointer;
+          outline: 0;
+          text-decoration: none;
+          overflow-wrap: break-word;
+        }
+      </style>
+      
+      <div class="search-pop-overlay">
+        <div class="popup search-popup">
+          <div class="search-header">
+            <span class="search-icon">
+              <i class="fa fa-search"></i>
+            </span>
+            <div class="search-input-container">
+              <input autocomplete="off" autocapitalize="off" maxlength="80" placeholder="Searching..." spellcheck="false" type="search" class="search-input" id="local-search-input" >
+              <!-- <input type="search" id="local-search-input" name="s" placeholder="请输入搜索的关键字" class="search-input"> -->
+            </div>
+            <span class="popup-btn-close" role="button">
+              <i class="fa fa-times-circle"></i>
+            </span>
+          </div>
+          <div class="search-result-container no-result"id="local-search-result">
+            <!-- <div class="search-stats">48 results found</div> -->
+            <!-- <hr> -->
+            <div class="search-result-icon">
+              <i class="fa fa-search fa-5x"></i>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div id="local-search1">
+        <!-- <input type="search" id="local-search-input" name="s" placeholder="请输入搜索的关键字" class="search-input">
+        <div id="local-search-result"></div> -->
+        
+<script src="/js/search.js"></script>
+
+        <script type="text/javascript">      
+          var search_path = "search.xml";
+          if (search_path.length == 0) {
+            search_path = "search.xml";
+          }
+          var path = "/" + search_path;
+          searchFunc(path, 'local-search-input', 'local-search-result');
+        </script>
+      </div>
+      <script>
+      </script>
+    </div>
+    <div class="menu">
+      
+        
+          <a href="/" class="nav-menu ">
+            HOME
+          </a>
+          
+        
+          <a href="/archives" class="nav-menu ">
+            ARCHIVE
+          </a>
+          
+        
+          <a href="/categories" class="nav-menu ">
+            CATEGORIES
+          </a>
+          
+        
+          <a href="/tags" class="nav-menu ">
+            TAGS
+          </a>
+          
+        
+          <a href="/links" class="nav-menu ">
+            LINKS
+          </a>
+          
+        
+          <a href="/about" class="nav-menu ">
+            ABOUT
+          </a>
+          
+        
+      
+    </div>
+  </div>
+</nav>
+    <div id="main"><section class="article">
+  <h2 class="title">
+    云计算-容器云笔记二（CICD集成）
+  </h2>
+  <p class="sub">
+    5月 12, 2021
+  </p>
+  <article class="content">
+    <h2 id="【题目-1】安装Jenkins-环境"><a href="#【题目-1】安装Jenkins-环境" class="headerlink" title="【题目 1】安装Jenkins 环境"></a>【题目 1】安装Jenkins 环境</h2><blockquote>
+<p>在master 节点上使用镜像jenkins/jenkins:2.262-centos 部署<br>Jenkins 服务，具体要求如下：<br>（1）容器名称：jenkins；<br>（2）端口映射：8080:80； [题目错误 改为8080:8080]<br>（3）使用root 身份生成容器；<br>（4）离线安装Jenkins 插件；<br>（5）设置Jenkins 用户：chinaskill；密码：000000；<br>（6）配置权限“任何用户可以做任何事(没有任何限制)”。<br>使用chinaskill 用户登录Jenkins</p>
+</blockquote>
+<h3 id="1-3"><a href="#1-3" class="headerlink" title="1-3"></a>1-3</h3><pre><code class="shell">docker run -d --name jenkins -p 8080:8080 -u root -v /home/jenkins_home:/var/jenkins_home -v /var/run/docker.sock:/var/run/docker.sock  -v /usr/bin/docker:/usr/bin/docker  -v /usr/bin/kubectl:/usr/local/bin/kubectl   -v /root/.kube:/root/.kube --restart always jenkins/jenkins:2.262-centos
+</code></pre>
+<h3 id="4-离线安装Jenkins-插件"><a href="#4-离线安装Jenkins-插件" class="headerlink" title="4.离线安装Jenkins 插件"></a>4.离线安装Jenkins 插件</h3><pre><code class="shell">cp -rfv /opt/plugins/* /home/jenkins_home/plugins/
+docker restart jenkins
+</code></pre>
+<h3 id="5-设置Jenkins-用户：chinaskill；密码：000000"><a href="#5-设置Jenkins-用户：chinaskill；密码：000000" class="headerlink" title="5.设置Jenkins 用户：chinaskill；密码：000000"></a>5.设置Jenkins 用户：chinaskill；密码：000000</h3><pre><code class="shell">系统设置 --&gt; 用户管理 --&gt; 新建用户 --&gt; 用户：chinaskill，密码：000000，邮箱随意 --&gt;新建用户
+</code></pre>
+<h3 id="6-配置权限“任何用户可以做任何事-没有任何限制-”"><a href="#6-配置权限“任何用户可以做任何事-没有任何限制-”" class="headerlink" title="6.配置权限“任何用户可以做任何事(没有任何限制)”"></a>6.配置权限“任何用户可以做任何事(没有任何限制)”</h3><pre><code class="shell">系统设置 --&gt; 全局安全配置 --&gt; 授权策略 选择 任何用户可以做任何事(没有任何限制) --&gt; 保存
+</code></pre>
+<h3 id="7-使用chinaskill-用户登录Jenkins"><a href="#7-使用chinaskill-用户登录Jenkins" class="headerlink" title="7.使用chinaskill 用户登录Jenkins"></a>7.使用chinaskill 用户登录Jenkins</h3><pre><code class="shell">注销 --&gt; 登录 --&gt; 用户名：chinaskill  密码：000000 --&gt; 登录
+</code></pre>
+<h2 id="【题目2】安装Gitlab-环境"><a href="#【题目2】安装Gitlab-环境" class="headerlink" title="【题目2】安装Gitlab 环境"></a>【题目2】安装Gitlab 环境</h2><blockquote>
+<p>在master 节点上使用镜像gitlab/gitlab-ce:12.9.2-ce.0 部署<br>Gitlab 服务，具体要求如下：<br>（1）容器名称：mygitlab；<br>（2）端口映射：1022:22、81:80、443:443；<br>（3）重启策略：always；<br>（4）设置Gitlab 用户：root；密码：00000000；<br>（5）新建项目：ChinaskillProject；<br>（6）将/opt/ChinaskillProject 中的代码上传到ChinaskillProject 项目中。</p>
+</blockquote>
+<h3 id="1-3-1"><a href="#1-3-1" class="headerlink" title="1-3"></a>1-3</h3><pre><code class="shell">docker run -d --name mygitlab  -p 1022:22 -p 81:80 -p 443:443  -v /etc/gitlab/config:/etc/gitlab  -v /etc/gitlab/logs:/var/log/gitlab  -v /etc/gitlab/data:/var/opt/gitlab  -restart always gitlab/gitlab-ce:12.9.2-ce.0
+</code></pre>
+<h3 id="4-设置Gitlab-用户：root；密码：00000000；"><a href="#4-设置Gitlab-用户：root；密码：00000000；" class="headerlink" title="4.设置Gitlab 用户：root；密码：00000000；"></a>4.设置Gitlab 用户：root；密码：00000000；</h3><pre><code class="shell">访问ip:81 --&gt; 设置密码为00000000
+</code></pre>
+<h3 id="5-新建项目：ChinaskillProject；"><a href="#5-新建项目：ChinaskillProject；" class="headerlink" title="5.新建项目：ChinaskillProject；"></a>5.新建项目：ChinaskillProject；</h3><pre><code class="shell">New project --&gt; Project name : ChinaskillProject，Visibility Level : Public，勾选Initialize repository with a README --&gt; Create project
+</code></pre>
+<h3 id="6-将-opt-ChinaskillProject-中的代码上传到ChinaskillProject-项目中。"><a href="#6-将-opt-ChinaskillProject-中的代码上传到ChinaskillProject-项目中。" class="headerlink" title="6.将/opt/ChinaskillProject 中的代码上传到ChinaskillProject 项目中。"></a>6.将/opt/ChinaskillProject 中的代码上传到ChinaskillProject 项目中。</h3><pre><code class="shell">yum install git -y
+cd /root
+git clone git@192.168.200.53:gitlab/ChinaskillProject.git
+cp -f /opt/ChinaskillProject/* /root/ChinaskillProject/
+git add .
+git commit -a -m &quot;ChinaskillProject&quot;  #-a 参数设置修改文件后不需要执行 git add 命令，直接来提交
+git push
+</code></pre>
+<h2 id="【题目3】配置Jenkins-连接Gitlab"><a href="#【题目3】配置Jenkins-连接Gitlab" class="headerlink" title="【题目3】配置Jenkins 连接Gitlab"></a>【题目3】配置Jenkins 连接Gitlab</h2><blockquote>
+<p>配置Jenkins 连接Gitlab，具体要求如下：<br>（1）设置Outbound requests；<br>（2）生成“Access Tokens”；<br>（3）设置Jenkins 取消对’/project’ end-point 进行身份验证；<br>（4）测试Jenkins 与Gitlab 的连通性。</p>
+</blockquote>
+<h3 id="1-设置Outbound-requests-gitlab操作"><a href="#1-设置Outbound-requests-gitlab操作" class="headerlink" title="1.设置Outbound requests                                   [gitlab操作]"></a>1.设置Outbound requests                                   [gitlab操作]</h3><pre><code class="shell">管理中心(顶部扳手图表) --&gt; 设置  --&gt; 网络 --&gt; 外发请求 ： 勾选允许Webhook和服务对本地网络的请求 --&gt; save changes
+</code></pre>
+<h3 id="2-获取gitlab-token-gitlab操作"><a href="#2-获取gitlab-token-gitlab操作" class="headerlink" title="2.获取gitlab token                                       [gitlab操作]"></a>2.获取gitlab token                                       [gitlab操作]</h3><pre><code class="shell">头像 --&gt; Settings --&gt; Access Tokens --&gt; Name : 命名为jenkins，勾选api --&gt; Create personal access token
+</code></pre>
+<h3 id="3-设置Jenkins取消对’-project’-end-point进行身份验证-Jenkins操作"><a href="#3-设置Jenkins取消对’-project’-end-point进行身份验证-Jenkins操作" class="headerlink" title="3. 设置Jenkins取消对’/project’ end-point进行身份验证        [Jenkins操作]"></a>3. 设置Jenkins取消对’/project’ end-point进行身份验证        [Jenkins操作]</h3><pre><code class="shell">Manage Jenkins --&gt; Configure System --&gt; Gitlab ： 取消勾选Enable authentication for &#39;/project&#39; end-point
+</code></pre>
+<h3 id="4-测试Jenkins-与Gitlab-的连通性-Jenkins操作"><a href="#4-测试Jenkins-与Gitlab-的连通性-Jenkins操作" class="headerlink" title="4. 测试Jenkins 与Gitlab 的连通性                            [Jenkins操作]"></a>4. 测试Jenkins 与Gitlab 的连通性                            [Jenkins操作]</h3><pre><code class="shell">Manage Jenkins --&gt; Configure System --&gt; Gitlab --&gt; Connection name随意 , Gitlab host URL : gitlab地址 --&gt; Credentials --&gt; 添加:Jenkins --&gt; 类型选择 : GitLab API token , API token : 输入上一步获取 --&gt; 添加 --&gt; Test Connection 显示Success则为成功
+</code></pre>
+<h2 id="【题目4】配置Jenkins-连接maven"><a href="#【题目4】配置Jenkins-连接maven" class="headerlink" title="【题目4】配置Jenkins 连接maven"></a>【题目4】配置Jenkins 连接maven</h2><blockquote>
+<p>配置Jenkins 连接maven，具体要求如下：<br>（1）采用docker in docker 的方式在Jenkins 内安装maven；<br>（2）在Jenkins 中配置maven 信息。</p>
+</blockquote>
+<h3 id="1-采用docker-in-docker-的方式在Jenkins-内安装maven"><a href="#1-采用docker-in-docker-的方式在Jenkins-内安装maven" class="headerlink" title="1.采用docker in docker 的方式在Jenkins 内安装maven"></a>1.采用docker in docker 的方式在Jenkins 内安装maven</h3><pre><code class="shell">cp -rf /opt/apache-maven-3.6.3-bin.tar.gz /home/jenkins_home/
+docker exec -it jenkins bash
+tar -zxvf /var/jenkins_home/apache-maven-3.6.3-bin.tar.gz -C .
+mv apache-maven-3.6.3/ /usr/local/maven
+vi /etc/profile
+export M2_HOME=/usr/local/maven 
+export PATH=$PATH:$M2_HOME/bin
+
+source /etc/profile
+mvn -v
+</code></pre>
+<h2 id="【题目5】配置CI-CD"><a href="#【题目5】配置CI-CD" class="headerlink" title="【题目5】配置CI/CD"></a>【题目5】配置CI/CD</h2><blockquote>
+<p>配置CI/CD，具体要求如下：<br>（1）新建一个流水线任务ChinaskillProject；<br>（2）编写流水线脚本；<br>（3）配置Webhook；<br>（4）在Harbor 中新建公开项目chinaskillproject。</p>
+</blockquote>
+<h3 id="1-新建一个流水线任务ChinaskillProject-Jenkins操作"><a href="#1-新建一个流水线任务ChinaskillProject-Jenkins操作" class="headerlink" title="1.新建一个流水线任务ChinaskillProject                         [Jenkins操作]"></a>1.新建一个流水线任务ChinaskillProject                         [Jenkins操作]</h3><pre><code class="shell">创建任务 --&gt; 任务名称：ChinaskillProject，选择流水线 --&gt; 构建触发器：Build when a change is pushed to GitLab. http://192.168.34.77:8080/project/ChinaskillProject,   勾选流水线:Pipeline script
+</code></pre>
+<h3 id="2-编写流水线脚本-Jenkins操作"><a href="#2-编写流水线脚本-Jenkins操作" class="headerlink" title="2.编写流水线脚本                                            [Jenkins操作]"></a>2.编写流水线脚本                                            [Jenkins操作]</h3><pre><code class="shell">node&#123;
+    stage(&#39;git clone&#39;)&#123;
+        git branch: &#39;master&#39;, credentialsId: &#39;c8a2e34e-1a8a-4407-9706-fd697d4e6110&#39;, url: &#39;http://192.168.34.77:81/root/ChinaskillProject.git&#39;
+    &#125;
+    stage(&#39;maven build&#39;)&#123;
+        sh &#39;&#39;&#39;/usr/local/maven/bin/mvn package -DskipTests -f /var/jenkins_home/workspace/ChinaskillProject&#39;&#39;&#39;
+    &#125;
+    stage(&#39;image build&#39;)&#123;
+        sh &#39;&#39;&#39;
+              echo $BUILD_ID
+              docker build -t 192.168.34.77/chinaskillproject/gateway:$BUILD_ID -f /var/jenkins_home/workspace/ChinaskillProject/gateway/Dockerfile  /var/jenkins_home/workspace/ChinaskillProject/gateway
+              docker build -t 192.168.34.77/chinaskillproject/config:$BUILD_ID -f /var/jenkins_home/workspace/ChinaskillProject/config/Dockerfile  /var/jenkins_home/workspace/ChinaskillProject/config
+           &#39;&#39;&#39;
+    &#125;
+    stage(&#39;upload registry&#39;)&#123;
+        sh &#39;&#39;&#39;
+              docker login 192.168.34.77 -u=admin -p=Harbor12345
+              docker push 192.168.34.77/chinaskillproject/gateway:$BUILD_ID
+              docker push 192.168.34.77/chinaskillproject/config:$BUILD_ID
+           &#39;&#39;&#39;
+    &#125;
+    stage(&#39;deploy Rancher&#39;)&#123;
+       sh &#39;sed -i &quot;s/sqshq\\/piggymetrics-gateway/192.168.34.77\\/ChinaskillProject\\/gateway:$BUILD_ID/g&quot; /var/jenkins_home/workspace/ChinaskillProject/yaml/deployment/gateway-deployment.yaml&#39;
+       sh &#39;sed -i &quot;s/sqshq\\/piggymetrics-config/192.168.34.77\\/ChinaskillProject\\/config:$BUILD_ID/g&quot; /var/jenkins_home/workspace/ChinaskillProject/yaml/deployment/config-deployment.yaml&#39;
+       sh &#39;kubectl create ns springcloud&#39;
+       sh &#39;kubectl apply -f /var/jenkins_home/workspace/ChinaskillProject/yaml/deployment/gateway-deployment.yaml --kubeconfig=/root/.kube/config&#39;
+       sh &#39;kubectl apply -f /var/jenkins_home/workspace/ChinaskillProject/yaml/deployment/config-deployment.yaml --kubeconfig=/root/.kube/config&#39;
+       sh &#39;kubectl apply -f /var/jenkins_home/workspace/ChinaskillProject/yaml/svc/gateway-svc.yaml --kubeconfig=/root/.kube/config&#39;
+       sh &#39;kubectl apply -f /var/jenkins_home/workspace/ChinaskillProject/yaml/svc/config-svc.yaml --kubeconfig=/root/.kube/config&#39;
+    &#125;
+&#125;
+</code></pre>
+<h3 id="3-配置Webhook-Gitlab操作"><a href="#3-配置Webhook-Gitlab操作" class="headerlink" title="3.配置Webhook                                                    [Gitlab操作]"></a>3.配置Webhook                                                    [Gitlab操作]</h3><pre><code class="shell">ChinaskillProject --&gt; Settings --&gt; Webhooks : URL即上面url，Push events : master --&gt; Add webhook --&gt; Test --&gt; Push events --&gt; 显示Hook executed successfully: HTTP 200 即成功
+</code></pre>
+<h3 id="4-在Harbor-中新建公开项目chinaskillproject-Harbor操作"><a href="#4-在Harbor-中新建公开项目chinaskillproject-Harbor操作" class="headerlink" title="4.在Harbor 中新建公开项目chinaskillproject                         [Harbor操作]"></a>4.在Harbor 中新建公开项目chinaskillproject                         [Harbor操作]</h3><pre><code class="shell">项目 --&gt; +新建项目 --&gt; 项目名称: chinaskillproject，勾选公开
+</code></pre>
+
+  </article>
+  <div class="Last-Next">
+    
+      <a href="/2021/05/12/cloudcomping-container-3/">
+        <div class="last">
+          <span>上一篇</span>
+          <p>
+            云计算-容器云笔记三（k8s运维）
+          </p>
+        </div>
+      </a>
+      
+
+    
+      <a href="/2021/05/11/cloudcomping-container-1/">
+        <div class="next">
+          <span>下一篇</span>
+          <p>
+            云计算-容器云笔记一（容器编排）
+          </p>
+        </div>
+      </a>
+      
+  </div>
+</section>
+
+<section class="article">
+  
+    <div id="vcomments"></div>
+    
+</section></div>
+    <footer id="footer" class="f-cf">
+  <div class="left">
+    <span>© 2021 Hiram&#39;s Blog.</span>
+    <span>Theme by Clover 2.0</span>
+  </div>
+
+  <div class="right">
+    
+      <p id="hitokoto"><a href="#" id="hitokoto_text">:D 获取中...</a></p>
+      <script>
+        var xhr = new XMLHttpRequest();
+        xhr.open('get', '//v1.hitokoto.cn');
+        xhr.onreadystatechange = function () {
+          if (xhr.readyState === 4) {
+            var data = JSON.parse(xhr.responseText);
+            var hitokoto = document.getElementById('hitokoto_text');
+            hitokoto.href = '//hitokoto.cn/?uuid=' + data.uuid
+            hitokoto.innerText = data.hitokoto;
+          }
+        }
+        xhr.send();
+      </script>
+    
+  </div>
+</footer>
+
+
+<script src="/js/gotop.js"></script>
+
+
+<div class="goTop" id="js-go_top">
+	<span>
+		<i class="fas fa-angle-up"></i>
+	</span>
+</div>
+
+<script>
+	$('#js-go_top').gotoTop({ offset: 500, speed: 300, animationShow: { 'transform': 'translate(0,0)', 'transition': 'transform .5s ease-in-out' }, animationHide: { 'transform': 'translate(100px,0)', 'transition': 'transform .5s ease-in-out' } });
+</script>
+
+
+  <script>
+    new Valine({
+      el: '#vcomments',
+      appId: 'iXLhz5jeT2wFRfJCQAJ7V95C-gzGzoHsz',
+      appKey: 'BfEnKf3O35FL0MPe3gVObgvU',
+      placeholder: 'Your commnet here. Be cool.' || 'Your commnet here. Be cool.',
+      avatar: 'mp' || 'mp',
+      pageSize: '10' || 10,
+      visitor: 'true',
+    })
+  </script>
+
+  </div>
+</body>
+</html>

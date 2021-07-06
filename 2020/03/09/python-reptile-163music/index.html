@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  
+  <title>Python爬虫-网易云热评Demo | Hiram&#39;s Blog</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <meta name="description" content="获取歌曲id 歌名 作者 封面链接 歌曲链接 热评（评论者 评论者头像 评论）# 导入包 import requests import json import random  #日更[19723756飙升榜 3779629新歌榜] 周四更[3778678热歌榜 2884035原创榜] song_list_id &#x3D; 3778678  # 构造url,user-agent请求头参数部分 # get-u">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Python爬虫-网易云热评Demo">
+<meta property="og:url" content="https://hiram-wong.github.io/2020/03/09/python-reptile-163music/index.html">
+<meta property="og:site_name" content="Hiram&#39;s Blog">
+<meta property="og:description" content="获取歌曲id 歌名 作者 封面链接 歌曲链接 热评（评论者 评论者头像 评论）# 导入包 import requests import json import random  #日更[19723756飙升榜 3779629新歌榜] 周四更[3778678热歌榜 2884035原创榜] song_list_id &#x3D; 3778678  # 构造url,user-agent请求头参数部分 # get-u">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2020-03-09T00:00:00.000Z">
+<meta property="article:modified_time" content="2020-08-04T15:02:13.960Z">
+<meta property="article:author" content="HiramWong">
+<meta property="article:tag" content="Python爬虫">
+<meta name="twitter:card" content="summary">
+  
+    <link rel="icon" href="/images/favicon.ico">
+  
+  <!-- font-awesome -->
+  <link href="//cdn.bootcdn.net/ajax/libs/font-awesome/5.15.3/css/all.min.css" rel="stylesheet">
+  <script src="https://cdn.bootcdn.net/ajax/libs/font-awesome/5.15.3/js/all.js"></script>
+  <!-- jQuery -->
+  <script src="//cdn.bootcdn.net/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+  <!-- valine评论 -->
+  
+    <script src="//cdn1.lncld.net/static/js/3.0.4/av-min.js"></script>
+    <script src='//unpkg.com/valine/dist/Valine.min.js'></script>
+  
+  <!-- 代码高亮库 -->
+  <!-- <link href="//cdn.bootcdn.net/ajax/libs/highlight.js/11.0.1/styles/atom-one-dark.min.css" rel="stylesheet"> -->
+  <script src="//cdn.bootcdn.net/ajax/libs/highlight.js/11.0.1/highlight.min.js"></script>
+  <!-- <script src="//cdn.bootcdn.net/ajax/libs/highlightjs-line-numbers.js/2.8.0/highlightjs-line-numbers.min.js"></script> -->
+
+  
+<link rel="stylesheet" href="/css/highlight.css">
+
+  <script >
+  hljs.highlightAll()
+</script>
+  
+<link rel="stylesheet" href="/css/index.css">
+
+<meta name="generator" content="Hexo 5.4.0"></head>
+
+<body style="
+
+
+  background-color: #eff0f6
+
+">
+  <div id="container">
+    <nav id="nav">
+  <header class="header">
+    <a href="/" class="title">
+      Hiram&#39;s Blog
+    </a>
+  </header>
+  <div class="ctnWrap">
+    <div class="icons">
+      
+        
+          
+          
+          <a href="https://dribbble.com/clovertuan" target="_blank" class="nav-icn">
+            <i class="fab fa-dribbble"></i>
+          </a>
+          
+        
+          
+          
+          <a href="https://www.behance.net/clovertuan" target="_blank" class="nav-icn">
+            <i class="fab fa-behance"></i>
+          </a>
+          
+        
+          
+          
+          <a href="https://www.instagram.com/clovertuan" target="_blank" class="nav-icn">
+            <i class="fab fa-instagram"></i>
+          </a>
+          
+        
+          
+          
+          <a href="https://github.com/Hiram-Wong" target="_blank" class="nav-icn">
+            <i class="fab fa-github"></i>
+          </a>
+          
+        
+      
+      <span id="search">
+        <i class="fas fa-search"></i>
+      </span>
+      <style>
+        .search-active .search-pop-overlay {
+          background: rgba(0,0,0,0.3);
+          visibility: visible;
+        }
+        .search-pop-overlay {
+          background: rgba(0,0,0,0);
+          display: flex;
+          height: 100%;
+          left: 0;
+          position: fixed;
+          top: 0;
+          transition: visibility 0.4s, background 0.4s;
+          visibility: hidden;
+          width: 100%;
+          z-index: 1400;
+        }
+        .search-popup {
+          background: #f5f5f5;
+          border-radius: 5px;
+          height: 80%;
+          margin: auto;
+          transform: scale(0);
+          transition: transform 0.4s;
+          width: 700px;
+        }
+        .search-popup .search-header {
+          background: #eee;
+          border-top-left-radius: 5px;
+          border-top-right-radius: 5px;
+          display: flex;
+          padding: 5px;
+          line-height: 2;
+        }
+        .search-popup .search-icon, .search-popup .popup-btn-close {
+          color: #999;
+          font-size: 18px;
+          padding: 0 10px;
+        }
+        .search-popup .search-input-container {
+          flex-grow: 1;
+          padding: 2px;
+        }
+        .search-popup input.search-input {
+          background: transparent;
+          border: 0;
+          outline: 0;
+          width: 100%;
+        }
+        input {
+          font-family: inherit;
+          font-size: 100%;
+          line-height: 1.15;
+          margin: 0;
+        }
+        [type='search'] {
+          outline-offset: -2px;
+          -webkit-appearance: textfield;
+        }
+        .search-popup .popup-btn-close {
+          cursor: pointer;
+        }
+        .search-popup .search-icon, .search-popup .popup-btn-close {
+          color: #999;
+          font-size: 18px;
+          padding: 0 10px;
+        }
+        .search-popup .no-result {
+            display: flex;
+        }
+        .search-popup .search-result-container {
+            height: calc(100% - 55px);
+            overflow: auto;
+            padding: 5px 25px;
+        }
+        .search-popup .search-result-icon {
+            color: #ccc;
+            margin: auto;
+        }
+        hr {
+          background-image: repeating-linear-gradient(-45deg, #ddd, #ddd 4px, transparent 4px, transparent 8px);
+          border: 0;
+          height: 3px;
+          margin: 40px 0;
+        }
+        .search-popup .no-result {
+          display: flex;
+        }
+        .search-popup .search-result-container hr {
+          margin: 5px 0 10px;
+        }
+        .search-popup .search-result-list {
+          width: 100%;
+        }
+        .search-popup .search-result-list {
+          margin: 0 5px;
+          padding: 0;
+        }
+        .search-popup p.search-result {
+          border-bottom: 1px dashed #ccc;
+          padding: 5px 0;
+          white-space:nowrap;
+          overflow:hidden;
+          text-overflow:ellipsis;
+        }
+        .search-result em {
+          background: transparent;
+          border-bottom: 1px dashed #ff2a2a;
+          color: #ff2a2a;
+          font-weight: bold;
+        }
+        .search-popup a.search-result-title {
+          font-weight: bold;
+        }
+        .search-popup a {
+          border-bottom: 1px solid #999;
+          color: #555;
+          cursor: pointer;
+          outline: 0;
+          text-decoration: none;
+          overflow-wrap: break-word;
+        }
+      </style>
+      
+      <div class="search-pop-overlay">
+        <div class="popup search-popup">
+          <div class="search-header">
+            <span class="search-icon">
+              <i class="fa fa-search"></i>
+            </span>
+            <div class="search-input-container">
+              <input autocomplete="off" autocapitalize="off" maxlength="80" placeholder="Searching..." spellcheck="false" type="search" class="search-input" id="local-search-input" >
+              <!-- <input type="search" id="local-search-input" name="s" placeholder="请输入搜索的关键字" class="search-input"> -->
+            </div>
+            <span class="popup-btn-close" role="button">
+              <i class="fa fa-times-circle"></i>
+            </span>
+          </div>
+          <div class="search-result-container no-result"id="local-search-result">
+            <!-- <div class="search-stats">48 results found</div> -->
+            <!-- <hr> -->
+            <div class="search-result-icon">
+              <i class="fa fa-search fa-5x"></i>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div id="local-search1">
+        <!-- <input type="search" id="local-search-input" name="s" placeholder="请输入搜索的关键字" class="search-input">
+        <div id="local-search-result"></div> -->
+        
+<script src="/js/search.js"></script>
+
+        <script type="text/javascript">      
+          var search_path = "search.xml";
+          if (search_path.length == 0) {
+            search_path = "search.xml";
+          }
+          var path = "/" + search_path;
+          searchFunc(path, 'local-search-input', 'local-search-result');
+        </script>
+      </div>
+      <script>
+      </script>
+    </div>
+    <div class="menu">
+      
+        
+          <a href="/" class="nav-menu ">
+            HOME
+          </a>
+          
+        
+          <a href="/archives" class="nav-menu ">
+            ARCHIVE
+          </a>
+          
+        
+          <a href="/categories" class="nav-menu ">
+            CATEGORIES
+          </a>
+          
+        
+          <a href="/tags" class="nav-menu ">
+            TAGS
+          </a>
+          
+        
+          <a href="/links" class="nav-menu ">
+            LINKS
+          </a>
+          
+        
+          <a href="/about" class="nav-menu ">
+            ABOUT
+          </a>
+          
+        
+      
+    </div>
+  </div>
+</nav>
+    <div id="main"><section class="article">
+  <h2 class="title">
+    Python爬虫-网易云热评Demo
+  </h2>
+  <p class="sub">
+    3月 9, 2020
+  </p>
+  <article class="content">
+    <h3 id="获取歌曲id-歌名-作者-封面链接-歌曲链接-热评（评论者-评论者头像-评论）"><a href="#获取歌曲id-歌名-作者-封面链接-歌曲链接-热评（评论者-评论者头像-评论）" class="headerlink" title="获取歌曲id 歌名 作者 封面链接 歌曲链接 热评（评论者 评论者头像 评论）"></a>获取歌曲id 歌名 作者 封面链接 歌曲链接 热评（评论者 评论者头像 评论）</h3><pre><code class="Python"># 导入包
+import requests
+import json
+import random
+
+#日更[19723756飙升榜 3779629新歌榜] 周四更[3778678热歌榜 2884035原创榜]
+song_list_id = 3778678
+
+# 构造url,user-agent请求头参数部分
+# get-url
+url = &#39;http://music.163.com/api/playlist/detail&#39;
+# get参数
+argument = &#123;
+    &#39;id&#39;: str(song_list_id)
+&#125;
+# 用户代理池
+uapools = [
+    #Edge Trident内核 on win10
+    &quot;Mozilla/5.0 (Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/64.0.3282.140 Safari/537.36 Edge/17.17134&quot;,
+    #Edge chromium内核 on win10
+    &quot;Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/80.0.3987.106 Safari/537.36 Edg/80.0.361.54&quot;,
+    #Chrome on win10
+    &quot;Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/80.0.3987.106 Safari/537.36&quot;,
+    #Safari on mac
+    &quot;Mozilla/5.0 (Macintosh; U; Intel Mac OS X 10_6_6; en-US) AppleWebKit/533.20.25 (KHTML, like Gecko) Version/5.0.4 Safari/533.20.27&quot;,
+    #FireFox on windows
+    &quot;Mozilla/5.0 (Windows NT 6.2; WOW64; rv:21.0) Gecko/20100101 Firefox/21.0&quot;,
+    #Opera on mac
+    &quot;Opera/9.80 (Macintosh; Intel Mac OS X 10.6.8; U; en) Presto/2.9.168 Version/11.52&quot;
+]
+# User-Agent
+ua = uapools[random.randint(0,len(uapools)-1)]
+print(ua)
+
+# 向指定的url发送get含有参数的请求
+data = requests.post(url,params=argument,headers=&#123;&#39;User-Agent&#39; : ua&#125;)
+# 返回网站对象
+res = data.text
+# json处理
+txt = json.loads(res)
+print(txt[&#39;result&#39;][&#39;tracks&#39;])
+#获取歌曲总数
+song_all = len(txt[&#39;result&#39;][&#39;tracks&#39;])
+#随机生成歌曲id
+rand=random.randint(0,song_all-1)
+print(rand)
+#歌曲id
+song_id = txt[&#39;result&#39;][&#39;tracks&#39;][rand][&#39;id&#39;]
+print(song_id)
+
+# 歌曲基本信息
+def song_basic(rand):
+    #歌曲名
+    song_name = txt[&#39;result&#39;][&#39;tracks&#39;][rand][&#39;name&#39;]
+    print(song_name)
+    #歌曲作者
+    song_author = txt[&#39;result&#39;][&#39;tracks&#39;][rand][&#39;artists&#39;][0][&#39;name&#39;]
+    print(song_author)
+    #歌曲封面
+    song_pic = txt[&#39;result&#39;][&#39;tracks&#39;][rand][&#39;album&#39;][&#39;picUrl&#39;]
+    print(song_pic)
+
+# 歌曲mp3链接
+def song_url(song_id):
+    url = &#39;https://music.163.com/song/media/outer/url?id=&#39;+str(song_id)+&#39;.mp3&#39;
+    print(url)
+
+# 歌曲热评
+def song_hotcomments(song_id):
+    url = &#39;http://music.163.com/api/v1/resource/comments/R_SO_4_&#39;+str(song_id)
+    data = requests.post(url,headers=&#123;&#39;User-Agent&#39; : ua&#125;)
+    html = data.text
+    txt= json.loads(html)
+    comments_all = len(txt[&#39;hotComments&#39;])
+    for i in range(comments_all):
+        nickName =  txt[&#39;hotComments&#39;][i][&#39;user&#39;][&#39;nickname&#39;]
+        avatarUrl =  txt[&#39;hotComments&#39;][i][&#39;user&#39;][&#39;avatarUrl&#39;]
+        comment = txt[&#39;hotComments&#39;][i][&#39;content&#39;]
+        print(i+1,&#39;\n&#39;,nickName,&#39;\n&#39;,avatarUrl,&#39;\n&#39;,comment)
+
+song_basic(rand)
+
+song_url(song_id)
+
+song_hotcomments(song_id)
+</code></pre>
+
+  </article>
+  <div class="Last-Next">
+    
+      <a href="/2020/03/09/python-reptile-pymysql/">
+        <div class="last">
+          <span>上一篇</span>
+          <p>
+            Python爬虫-Pymysql模块
+          </p>
+        </div>
+      </a>
+      
+
+    
+      <a href="/2020/03/08/python-reptile-xpath/">
+        <div class="next">
+          <span>下一篇</span>
+          <p>
+            Python爬虫-Xpath模块
+          </p>
+        </div>
+      </a>
+      
+  </div>
+</section>
+
+<section class="article">
+  
+    <div id="vcomments"></div>
+    
+</section></div>
+    <footer id="footer" class="f-cf">
+  <div class="left">
+    <span>© 2021 Hiram&#39;s Blog.</span>
+    <span>Theme by Clover 2.0</span>
+  </div>
+
+  <div class="right">
+    
+      <p id="hitokoto"><a href="#" id="hitokoto_text">:D 获取中...</a></p>
+      <script>
+        var xhr = new XMLHttpRequest();
+        xhr.open('get', '//v1.hitokoto.cn');
+        xhr.onreadystatechange = function () {
+          if (xhr.readyState === 4) {
+            var data = JSON.parse(xhr.responseText);
+            var hitokoto = document.getElementById('hitokoto_text');
+            hitokoto.href = '//hitokoto.cn/?uuid=' + data.uuid
+            hitokoto.innerText = data.hitokoto;
+          }
+        }
+        xhr.send();
+      </script>
+    
+  </div>
+</footer>
+
+
+<script src="/js/gotop.js"></script>
+
+
+<div class="goTop" id="js-go_top">
+	<span>
+		<i class="fas fa-angle-up"></i>
+	</span>
+</div>
+
+<script>
+	$('#js-go_top').gotoTop({ offset: 500, speed: 300, animationShow: { 'transform': 'translate(0,0)', 'transition': 'transform .5s ease-in-out' }, animationHide: { 'transform': 'translate(100px,0)', 'transition': 'transform .5s ease-in-out' } });
+</script>
+
+
+  <script>
+    new Valine({
+      el: '#vcomments',
+      appId: 'iXLhz5jeT2wFRfJCQAJ7V95C-gzGzoHsz',
+      appKey: 'BfEnKf3O35FL0MPe3gVObgvU',
+      placeholder: 'Your commnet here. Be cool.' || 'Your commnet here. Be cool.',
+      avatar: 'mp' || 'mp',
+      pageSize: '10' || 10,
+      visitor: 'true',
+    })
+  </script>
+
+  </div>
+</body>
+</html>
